@@ -36,22 +36,22 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: BattFo-arm64-v8a-debug
-          path: app/build/outputs/apk/arm64-v8a/debug/app-arm64-v8a-debug.apk
+          path: app/build/outputs/apk/arm64-v8a/debug/*.apk
 
       - name: Upload armeabi-v7a APK
         uses: actions/upload-artifact@v4
         with:
           name: BattFo-armeabi-v7a-debug
-          path: app/build/outputs/apk/armeabi-v7a/debug/app-armeabi-v7a-debug.apk
+          path: app/build/outputs/apk/armeabi-v7a/debug/*.apk
 
       - name: Upload x86_64 APK
         uses: actions/upload-artifact@v4
         with:
           name: BattFo-x86_64-debug
-          path: app/build/outputs/apk/x86_64/debug/app-x86_64-debug.apk
+          path: app/build/outputs/apk/x86_64/debug/*.apk
 
       - name: Upload universal APK
         uses: actions/upload-artifact@v4
         with:
           name: BattFo-universal-debug
-          path: app/build/outputs/apk/universal/debug/app-universal-debug.apk
+          path: app/build/outputs/apk/universal/debug/*.apk
