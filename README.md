@@ -99,6 +99,7 @@ See [LICENSE](LICENSE) for the full license text.
 
 ## Status
 
-BattFo is currently in active development.
+## Status
 
-**Current version: v1.0.0**
+BattFo is currently in active development. Some features may be incomplete,
+unstable, or have rough edges, and you may encounter bugs or unfinished UI.
