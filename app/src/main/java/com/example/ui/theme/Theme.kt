@@ -79,6 +79,7 @@ fun BattFoTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = BattFoShapes,
         content = content
     )
 }
