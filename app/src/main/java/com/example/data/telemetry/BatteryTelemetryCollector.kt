@@ -41,7 +41,7 @@ class BatteryTelemetryCollector(private val context: Context) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 if (intent != null && intent.action == Intent.ACTION_BATTERY_CHANGED) {
-                    trySend(parseTelemetryFromIntent(intent))
+                    trySend(safeParseTelemetryFromIntent(intent))
                 }
             }
         }
@@ -61,14 +61,14 @@ class BatteryTelemetryCollector(private val context: Context) {
 
         // Send initial state immediately
         val initialIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        trySend(parseTelemetryFromIntent(initialIntent))
+        trySend(safeParseTelemetryFromIntent(initialIntent))
 
         // Coroutine loop for refreshing instantaneous current/power while collector is active
         val pollingJob = launch(kotlinx.coroutines.Dispatchers.Default) {
             while (isActive) {
                 delay(refreshIntervalMs)
                 val sticky = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-                trySend(parseTelemetryFromIntent(sticky))
+                trySend(safeParseTelemetryFromIntent(sticky))
             }
         }
 
@@ -77,6 +77,16 @@ class BatteryTelemetryCollector(private val context: Context) {
                 context.unregisterReceiver(receiver)
             } catch (_: Exception) {}
             pollingJob.cancel()
+        }
+    }
+
+    private fun safeParseTelemetryFromIntent(intent: Intent?): BatteryTelemetry {
+        return try {
+            parseTelemetryFromIntent(intent)
+        } catch (_: SecurityException) {
+            BatteryTelemetry()
+        } catch (_: RuntimeException) {
+            BatteryTelemetry()
         }
     }
 
