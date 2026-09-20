@@ -97,9 +97,9 @@ BattFo is licensed under the **MIT License**.
 
 See [LICENSE](LICENSE) for the full license text.
 
-## Status
+> [!IMPORTANT]
 
-## Status
+> **Status**
 
-BattFo is currently in active development. Some features may be incomplete,
+> BattFo is currently in active development. Some features may be incomplete,
 unstable, or have rough edges, and you may encounter bugs or unfinished UI.
