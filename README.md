@@ -1,4 +1,4 @@
-## **BattFo
+## BattFo
 
 > A lightweight, privacy-focused Android battery monitor.
 
