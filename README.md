@@ -123,3 +123,8 @@ Please open an issue or pull request on GitHub.
 BattFo is licensed under the **MIT License**.
 
 See [LICENSE](LICENSE) for the full license text.
+
+---
+
+> [!NOTE]
+> The core logic and application code were generated with **AI** under my supervision and direction.
