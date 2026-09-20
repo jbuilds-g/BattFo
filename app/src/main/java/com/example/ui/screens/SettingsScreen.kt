@@ -1,9 +1,18 @@
 package com.example.ui.screens
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,21 +29,27 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -46,6 +61,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,12 +71,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.model.TemperatureUnit
 import com.example.model.ThemeMode
 import com.example.ui.viewmodel.BatteryViewModel
+import com.jbuilds.battfo.BuildConfig
+import com.jbuilds.battfo.R
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -74,10 +98,53 @@ fun SettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var importJsonText by remember { mutableStateOf("") }
+
+    // Track system notification permission state
+    val requiresNotificationPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    var hasNotificationPermission by remember {
+        mutableStateOf(
+            if (requiresNotificationPermission) {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            } else {
+                true
+            }
+        )
+    }
+
+    // Refresh permission status when returning to the app from system settings
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (requiresNotificationPermission) {
+                    hasNotificationPermission = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasNotificationPermission = isGranted
+        if (isGranted) {
+            Toast.makeText(context, "Notification permission enabled", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Column(
         modifier = modifier
@@ -217,6 +284,120 @@ fun SettingsScreen(
         // Section: Notifications & Alerts
         SettingsSectionHeader(title = "Alerts & Notifications", icon = Icons.Default.Notifications)
 
+        // Notification permission status card (especially critical on Android 13+)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("notification_permission_card"),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (hasNotificationPermission) {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                } else {
+                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                }
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = if (hasNotificationPermission) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
+                            contentDescription = null,
+                            tint = if (hasNotificationPermission) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Column {
+                            Text(
+                                text = "Notification Permission",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = if (hasNotificationPermission) "Active & Allowed" else "Permission Not Granted",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (hasNotificationPermission) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+
+                    if (!hasNotificationPermission) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
+                        ) {
+                            Text(
+                                text = "Action Needed",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (!hasNotificationPermission) {
+                    Text(
+                        text = "BattFo uses notifications to alert you when your battery is critically low, reaches your chosen charging target to preserve battery longevity, or exceeds safe operating temperatures.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (requiresNotificationPermission) {
+                            Button(
+                                onClick = {
+                                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("request_notification_permission_button")
+                            ) {
+                                Text("Grant Permission")
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    }
+                                } else {
+                                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
+                                    }
+                                }
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("open_notification_settings_button")
+                        ) {
+                            Text("System Settings")
+                        }
+                    }
+                }
+            }
+        }
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -241,9 +422,17 @@ fun SettingsScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Trigger at ${settings.lowBatteryThreshold}%",
+                            text = if (!hasNotificationPermission && settings.lowBatteryAlertEnabled) {
+                                "Trigger at ${settings.lowBatteryThreshold}% (Requires notification permission)"
+                            } else {
+                                "Trigger at ${settings.lowBatteryThreshold}%"
+                            },
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (!hasNotificationPermission && settings.lowBatteryAlertEnabled) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
                     }
                     Switch(
@@ -273,9 +462,17 @@ fun SettingsScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Notify when charged to ${settings.fullChargeThreshold}% (protects cell health)",
+                            text = if (!hasNotificationPermission && settings.fullChargeAlertEnabled) {
+                                "Notify when charged to ${settings.fullChargeThreshold}% (Requires notification permission)"
+                            } else {
+                                "Notify when charged to ${settings.fullChargeThreshold}% (protects cell health)"
+                            },
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (!hasNotificationPermission && settings.fullChargeAlertEnabled) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
                     }
                     Switch(
@@ -305,9 +502,17 @@ fun SettingsScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Trigger at ${String.format(Locale.US, "%.1f", settings.highTempThresholdC)} °C",
+                            text = if (!hasNotificationPermission && settings.highTempAlertEnabled) {
+                                "Trigger at ${String.format(Locale.US, "%.1f", settings.highTempThresholdC)} °C (Requires notification permission)"
+                            } else {
+                                "Trigger at ${String.format(Locale.US, "%.1f", settings.highTempThresholdC)} °C"
+                            },
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (!hasNotificationPermission && settings.highTempAlertEnabled) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
                     }
                     Switch(
@@ -409,35 +614,100 @@ fun SettingsScreen(
             }
         }
 
-        // Section: About & Privacy
-        SettingsSectionHeader(title = "About & Privacy", icon = Icons.Default.Security)
+        // Section: About
+        SettingsSectionHeader(title = "About", icon = Icons.Default.Info)
 
         Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("about_card"),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 24.dp, vertical = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Centered App Title
                 Text(
-                    text = "BattFo · Battery Monitor v1.0",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    text = "BattFo",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "Zero bloat, enthusiast battery telemetry. BattFo stores all records 100% locally on your device in a private SQLite database. No internet telemetry, no tracking, and no fake optimizer claims.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "Built with Kotlin, Jetpack Compose, Material 3 Expressive, Room Database, and official Android BatteryManager APIs.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
+
+                // Centered App Icon with subtle container
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(76.dp),
+                    tonalElevation = 2.dp
+                ) {
+                    Image(
+                        painter = painterResource(id = R.mipmap.ic_launcher),
+                        contentDescription = "BattFo App Icon",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(8.dp)
+                    )
+                }
+
+                // Version and GitHub Action Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Dynamic App Version Chip
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.testTag("version_badge")
+                    ) {
+                        Text(
+                            text = "v${BuildConfig.VERSION_NAME}",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    // Accessible GitHub Action Button
+                    FilledTonalButton(
+                        onClick = {
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://github.com/jbuilds-g/BattFo")
+                            )
+                            context.startActivity(intent)
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("github_button")
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_github),
+                            contentDescription = "Open GitHub repository",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "GitHub",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
         }
     }
