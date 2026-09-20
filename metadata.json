@@ -1,0 +1,6 @@
+{
+  "name": "BattFo",
+  "description": "Accurate battery telemetry and monitoring for Android.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
