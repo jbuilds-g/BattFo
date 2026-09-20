@@ -32,7 +32,7 @@ class BatteryRepository(private val context: Context) {
     private val alertManager = BatteryAlertManager(context)
     val preferences = SettingsPreferences(context)
 
-    private val _currentTelemetry = MutableStateFlow(collector.readCurrentTelemetry())
+    private val _currentTelemetry = MutableStateFlow(runCatching { collector.readCurrentTelemetry() }.getOrDefault(BatteryTelemetry()))
     val currentTelemetry: StateFlow<BatteryTelemetry> = _currentTelemetry.asStateFlow()
 
     private var lastSnapshotTimeMs: Long = 0
