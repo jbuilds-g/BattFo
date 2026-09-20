@@ -5,7 +5,12 @@
 BattFo is a modern Android battery monitoring app designed to make battery telemetry easy to understand without the bloat found in typical battery-monitoring and "battery optimizer" apps.
 
 Built with **Material 3 Expressive**, BattFo focuses on real device telemetry, useful history, charging information, and a clean native Android experience.
-
+---
+> [!NOTE]
+> **Status:**
+>
+> - BattFo is currently in active development. Some features may be incomplete, unstable, or have rough edges, and you may encounter bugs or unfinished UI.
+---
 ## Features
 
 - Real-time battery percentage and charging state
@@ -25,16 +30,16 @@ Built with **Material 3 Expressive**, BattFo focuses on real device telemetry, u
 - No account required
 - No unnecessary permissions
 - No battery optimizer or RAM-cleaning gimmicks
-
+---
 ## Screenshots
 
 _Coming soon._
-
+---
 ## Requirements
 
 - Android 7.0 (API 24) or newer
 - Some battery metrics depend on device hardware and Android/OEM support.
-
+---
 ## Download
 
 Download the latest release from the **GitHub Releases** page.
@@ -46,6 +51,7 @@ Choose the APK matching your device architecture:
 - `x86_64` - Compatible x86 devices and emulators
 - `universal` - Supports all included architectures
 
+----
 ## Building
 
 Clone the repository and open the project in Android Studio.
@@ -60,7 +66,7 @@ Then build the project with Gradle.
 On Windows:
 
     .\gradlew.bat assembleDebug
-
+---
 ## Tech Stack
 
 - Kotlin
@@ -70,13 +76,13 @@ On Windows:
 - Room
 - Kotlin Coroutines
 - Android BatteryManager APIs
-
+---
 ## Privacy
 
 BattFo is designed to keep battery data on your device.
 
 The app does not require an account or cloud synchronization to provide its core functionality.
-
+---
 ## Philosophy
 
 BattFo is a **battery monitor, not a battery optimizer**.
@@ -84,21 +90,15 @@ BattFo is a **battery monitor, not a battery optimizer**.
 It doesn't pretend to magically improve battery life, clean RAM, kill apps, or provide fake "AI-powered" battery health scores.
 
 If Android cannot provide reliable information for a metric, BattFo does not fabricate it.
-
+---
 ## Contributing
 
 Contributions, bug reports, and improvements are welcome.
 
 Please open an issue or pull request on GitHub.
-
+---
 ## License
 
 BattFo is licensed under the **MIT License**.
 
 See [LICENSE](LICENSE) for the full license text.
-
-> [!NOTE]
-> **Status:**
->
-> - BattFo is currently in active development. Some features may be incomplete,
-> - unstable, or have rough edges, and you may encounter bugs or unfinished UI.
