@@ -29,29 +29,43 @@ jobs:
         with:
           gradle-version: '9.7.1'
 
-      - name: Build APK
-        run: gradle assembleDebug
+      - name: Restore release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > my-upload-key.jks
+
+      - name: Build release-signed APKs
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle assembleRelease
 
       - name: Upload arm64-v8a APK
         uses: actions/upload-artifact@v4
         with:
-          name: BattFo-arm64-v8a-debug
-          path: app/build/outputs/apk/debug/*arm64-v8a*.apk
+          name: BattFo-arm64-v8a-development
+          path: app/build/outputs/apk/release/*arm64-v8a*.apk
 
       - name: Upload armeabi-v7a APK
         uses: actions/upload-artifact@v4
         with:
-          name: BattFo-armeabi-v7a-debug
-          path: app/build/outputs/apk/debug/*armeabi-v7a*.apk
+          name: BattFo-armeabi-v7a-development
+          path: app/build/outputs/apk/release/*armeabi-v7a*.apk
 
       - name: Upload x86_64 APK
         uses: actions/upload-artifact@v4
         with:
-          name: BattFo-x86_64-debug
-          path: app/build/outputs/apk/debug/*x86_64*.apk
+          name: BattFo-x86_64-development
+          path: app/build/outputs/apk/release/*x86_64*.apk
 
       - name: Upload universal APK
         uses: actions/upload-artifact@v4
         with:
-          name: BattFo-universal-debug
-          path: app/build/outputs/apk/debug/*universal*.apk
+          name: BattFo-universal-development
+          path: app/build/outputs/apk/release/*universal*.apk
+
+      - name: Remove release keystore
+        if: always()
+        run: rm -f my-upload-key.jks
