@@ -649,7 +649,7 @@ fun SettingsScreen(
                     tonalElevation = 2.dp
                 ) {
                     Image(
-                        painter = painterResource(id = R.mipmap.ic_launcher),
+                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
                         contentDescription = "BattFo App Icon",
                         modifier = Modifier
                             .fillMaxSize()
