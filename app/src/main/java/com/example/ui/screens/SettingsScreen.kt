@@ -54,7 +54,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -108,6 +107,7 @@ fun SettingsScreen(
 
     var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
+    var showLicenseDialog by remember { mutableStateOf(false) }
     var importJsonText by remember { mutableStateOf("") }
 
     var appearanceExpanded by rememberSaveable { mutableStateOf(true) }
@@ -694,100 +694,133 @@ fun SettingsScreen(
             )
         }
 
-
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("about_card"),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
+            modifier = Modifier.fillMaxWidth().testTag("about_card"),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 28.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth().padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Centered App Title
-                Text(
-                    text = "BattFo",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                // Centered App Icon with subtle container
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(76.dp),
-                    tonalElevation = 2.dp
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                        contentDescription = "BattFo App Icon",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(8.dp)
-                    )
-                }
-
-                // Version and GitHub Action Row
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Dynamic App Version Chip
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(64.dp),
+                        tonalElevation = 2.dp
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                            contentDescription = "BattFo App Icon",
+                            modifier = Modifier.fillMaxSize().padding(8.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("BattFo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text("Battery Monitor", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         modifier = Modifier.testTag("version_badge")
                     ) {
                         Text(
-                            text = "v${BuildConfig.VERSION_NAME}",
+                            "v${BuildConfig.VERSION_NAME}",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    // Accessible GitHub Action Button
-                    FilledTonalButton(
-                        onClick = {
-                            val intent = Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse("https://github.com/jbuilds-g/BattFo")
-                            )
-                            context.startActivity(intent)
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.testTag("github_button")
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_github),
-                            contentDescription = "Open GitHub repository",
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "GitHub",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.SemiBold
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                         )
                     }
                 }
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/jbuilds-g"))
+                                )
+                            }
+                        )
+                        .testTag("developer_card"),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceContainer
+                ) {
+                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_github),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Developer", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("JBuilds", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("github.com/jbuilds-g", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+
+                OutlinedButton(
+                    onClick = { showLicenseDialog = true },
+                    modifier = Modifier.fillMaxWidth().testTag("license_button"),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("MIT License")
+                }
             }
         }
+    }
+
+    if (showLicenseDialog) {
+        AlertDialog(
+            onDismissRequest = { showLicenseDialog = false },
+            title = { Text("MIT License") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth().height(420.dp).verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = """MIT License
+
+Copyright (c) 2026 JBuilds
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.""",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLicenseDialog = false }) { Text("Done") }
+            }
+        )
     }
 
     // Clear confirmation dialog
@@ -898,26 +931,3 @@ private fun CollapsibleSettingsSection(
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                Icon(
-                    imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
-                    contentDescription = if (expanded) "Collapse $title" else "Expand $title",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-
-        AnimatedVisibility(visible = expanded) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                content()
-            }
-        }
-    }
-}
