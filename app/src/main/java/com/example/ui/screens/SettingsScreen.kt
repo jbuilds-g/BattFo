@@ -685,147 +685,170 @@ fun SettingsScreen(
                 }
 
 // Section: About
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Info,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "About",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        Card(
-            modifier = Modifier.fillMaxWidth().testTag("about_card"),
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = MaterialTheme.shapes.medium,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.size(64.dp),
-                        tonalElevation = 2.dp
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                            contentDescription = "BattFo App Icon",
-                            modifier = Modifier.fillMaxSize().padding(8.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("BattFo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text("Battery Monitor", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.testTag("version_badge")
-                    ) {
-                        Text(
-                            "v${BuildConfig.VERSION_NAME}",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    }
-                }
+                Text(
+                    "About",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Surface(
-                    modifier = Modifier.fillMaxWidth()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/jbuilds-g"))
-                                )
-                            }
-                        )
-                        .testTag("developer_card"),
-                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
                     color = MaterialTheme.colorScheme.surfaceContainer
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val avatar = githubProfile?.avatar
-                        if (avatar != null) {
-                            Image(
-                                bitmap = avatar.asImageBitmap(),
-                                contentDescription = "JBuilds GitHub profile picture",
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(androidx.compose.foundation.shape.CircleShape)
-                            )
-                        } else {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Surface(
-                                shape = androidx.compose.foundation.shape.CircleShape,
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                modifier = Modifier.size(48.dp)
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(96.dp)
                             ) {
-                                     OutlinedButton(
-                    onClick = {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/jbuilds-g/BattFo"))
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Icon(painter = painterResource(id = R.drawable.ic_github), contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("View source on GitHub")
-                }
-
-           Icon(
-                                    painter = painterResource(id = R.drawable.ic_github),
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.padding(12.dp)
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(24.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "BattFo",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "Battery Monitor",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Surface(
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Text(
+                                    "v${BuildConfig.VERSION_NAME}",
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Developer", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(githubProfile?.name ?: "JBuilds", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text("@${githubProfile?.login ?: "jbuilds-g"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        val avatar = githubProfile?.avatar
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        context.startActivity(
+                                            Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/jbuilds-g"))
+                                        )
+                                    }
+                                )
+                                .testTag("developer_card"),
+                            shape = MaterialTheme.shapes.medium,
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (avatar != null) {
+                                    Image(
+                                        bitmap = avatar.asImageBitmap(),
+                                        contentDescription = "JBuilds GitHub profile picture",
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(androidx.compose.foundation.shape.CircleShape)
+                                    )
+                                } else {
+                                    Surface(
+                                        shape = androidx.compose.foundation.shape.CircleShape,
+                                        color = MaterialTheme.colorScheme.secondaryContainer,
+                                        modifier = Modifier.size(48.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_github),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.padding(12.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "Developer",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        githubProfile?.name ?: "JBuilds",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        "@${githubProfile?.login ?: "jbuilds-g"}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { showLicenseDialog = true },
+                                modifier = Modifier.weight(1f).testTag("license_button"),
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Icon(
+                                    Icons.Default.Security,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("MIT License", maxLines = 1)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    context.startActivity(
+                                        Intent(
+                                            Intent.ACTION_VIEW,
+                                            Uri.parse("https://github.com/jbuilds-g/BattFo")
+                                        )
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_github),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("View Source", maxLines = 1)
+                            }
                         }
                     }
                 }
-
-                OutlinedButton(
-                    onClick = { showLicenseDialog = true },
-                    modifier = Modifier.fillMaxWidth().testTag("license_button"),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("MIT License")
-                }
-            }
-        }
-    }
-
     if (showLicenseDialog) {
         AlertDialog(
             onDismissRequest = { showLicenseDialog = false },
