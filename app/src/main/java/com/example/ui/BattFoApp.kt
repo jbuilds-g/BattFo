@@ -247,8 +247,8 @@ fun BattFoApp(
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
                         .padding(horizontal = 12.dp, vertical = 7.dp)
-                        .widthIn(max = 720.dp)
-                        .fillMaxWidth()
+                        .widthIn(max = 420.dp)
+                        .wrapContentWidth()
                         .testTag("floating_navigation_bar"),
                     shape = RoundedCornerShape(28.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -258,7 +258,7 @@ fun BattFoApp(
                 ) {
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .wrapContentWidth()
                             .padding(horizontal = 4.dp, vertical = 3.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
