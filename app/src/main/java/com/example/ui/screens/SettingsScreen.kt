@@ -748,8 +748,6 @@ fun SettingsScreen(
             }
         }
 
-                }
-
 // Section: About
                 Text(
                     "About",
@@ -921,6 +919,8 @@ fun SettingsScreen(
                         }
                     }
                 }
+    }
+
     if (showLicenseDialog) {
         AlertDialog(
             onDismissRequest = { showLicenseDialog = false },
