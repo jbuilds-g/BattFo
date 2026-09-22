@@ -628,7 +628,7 @@ fun SettingsScreen(
 
 // Section: Data & Storage
         CollapsibleSettingsSection(
-            title = "Data & History Management",
+            title = "Data & Backup",
             icon = Icons.Default.Settings,
             expanded = dataExpanded,
             onExpandedChange = { dataExpanded = !dataExpanded }
@@ -671,6 +671,23 @@ fun SettingsScreen(
                     }
                 }
 
+                HorizontalDivider()
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Full Backup & Restore",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Back up all BattFo settings, preferences, and battery history to a file. Restore everything from a previous backup.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -686,7 +703,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Backup")
+                        Text("Create Backup")
                     }
 
                     OutlinedButton(
@@ -697,7 +714,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Restore")
+                        Text("Restore Backup")
                     }
                 }
 
