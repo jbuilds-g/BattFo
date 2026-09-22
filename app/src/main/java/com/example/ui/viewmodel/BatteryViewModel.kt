@@ -77,6 +77,10 @@ class BatteryViewModel(application: Application) : AndroidViewModel(application)
         repository.preferences.updateSettings(newSettings)
     }
 
+    fun resetSettings() {
+        repository.preferences.resetSettings()
+    }
+
     fun clearAllHistory() {
         viewModelScope.launch {
             repository.clearAllHistory()
