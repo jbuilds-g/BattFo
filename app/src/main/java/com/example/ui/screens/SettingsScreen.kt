@@ -1024,7 +1024,6 @@ SOFTWARE.""",
         )
     }
 
-    }
 }
 
 @Composable
