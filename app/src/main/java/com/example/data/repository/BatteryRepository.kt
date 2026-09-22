@@ -1,6 +1,7 @@
 package com.example.data.repository
 
 import android.content.Context
+import androidx.room.withTransaction
 import com.example.data.local.BattFoDatabase
 import com.example.data.local.SettingsPreferences
 import com.example.data.local.entity.BatterySnapshotEntity
