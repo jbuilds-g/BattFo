@@ -704,7 +704,7 @@ fun SettingsScreen(
                             Surface(
                                 shape = MaterialTheme.shapes.medium,
                                 color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.size(96.dp)
+                                modifier = Modifier.size(104.dp)
                             ) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_launcher_foreground),
@@ -742,6 +742,14 @@ fun SettingsScreen(
 
                         Spacer(modifier = Modifier.height(20.dp))
 
+                        Text(
+                            "Developer",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         val avatar = githubProfile?.avatar
                         Surface(
                             modifier = Modifier
@@ -760,7 +768,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.surfaceContainerHighest
                         ) {
                             Row(
-                                modifier = Modifier.padding(16.dp),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 if (avatar != null) {
@@ -768,14 +776,14 @@ fun SettingsScreen(
                                         bitmap = avatar.asImageBitmap(),
                                         contentDescription = "JBuilds GitHub profile picture",
                                         modifier = Modifier
-                                            .size(48.dp)
+                                            .size(52.dp)
                                             .clip(androidx.compose.foundation.shape.CircleShape)
                                     )
                                 } else {
                                     Surface(
                                         shape = androidx.compose.foundation.shape.CircleShape,
                                         color = MaterialTheme.colorScheme.secondaryContainer,
-                                        modifier = Modifier.size(48.dp)
+                                        modifier = Modifier.size(52.dp)
                                     ) {
                                         Icon(
                                             painter = painterResource(id = R.drawable.ic_github),
@@ -787,11 +795,6 @@ fun SettingsScreen(
                                 }
                                 Spacer(modifier = Modifier.width(14.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        "Developer",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
                                     Text(
                                         githubProfile?.name ?: "JBuilds",
                                         style = MaterialTheme.typography.titleMedium,
@@ -805,7 +808,6 @@ fun SettingsScreen(
                                 }
                             }
                         }
-
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Row(
