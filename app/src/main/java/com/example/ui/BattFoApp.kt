@@ -42,6 +42,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -111,7 +112,7 @@ private fun RowScope.ExpressivePillNavItem(
 
     Box(
         modifier = Modifier
-            .height(44.dp)
+            .height(48.dp)
             .weight(1f)
             .graphicsLayer {
                 scaleX = scale
@@ -195,6 +196,15 @@ fun BattFoApp(
                         }
                     },
                     actions = {
+                        IconButton(
+                            onClick = { currentDestination = BattFoDestination.SETTINGS },
+                            modifier = Modifier.testTag("nav_settings")
+                        ) {
+                            Icon(
+                                imageVector = if (currentDestination == BattFoDestination.SETTINGS) Icons.Filled.Settings else Icons.Outlined.Settings,
+                                contentDescription = "Settings"
+                            )
+                        }
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
@@ -270,7 +280,7 @@ fun BattFoApp(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        BattFoDestination.entries.forEach { destination ->
+                        BattFoDestination.entries.filter { it != BattFoDestination.SETTINGS }.forEach { destination ->
                             ExpressivePillNavItem(
                                 destination = destination,
                                 selected = currentDestination == destination,
