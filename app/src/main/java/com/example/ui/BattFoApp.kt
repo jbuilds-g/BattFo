@@ -10,6 +10,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -116,14 +117,18 @@ private fun RowScope.ExpressivePillNavItem(
 
     Box(
         modifier = Modifier
-            .height(48.dp)
+            .height(44.dp)
             .wrapContentWidth()
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
             .background(containerColor, CircleShape)
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
             .padding(horizontal = if (selected && showLabel) 16.dp else 12.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -209,33 +214,6 @@ fun BattFoApp(
                                 contentDescription = "Settings"
                             )
                         }
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-                            modifier = Modifier.padding(end = 12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(7.dp)
-                                        .background(
-                                            if (telemetry.isCharging) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.secondary,
-                                            CircleShape
-                                        )
-                                )
-                                Spacer(modifier = Modifier.width(5.dp))
-                                Text(
-                                    text = "${telemetry.percentage}%",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background
@@ -268,7 +246,7 @@ fun BattFoApp(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                        .padding(horizontal = 12.dp, vertical = 7.dp)
                         .widthIn(max = 720.dp)
                         .fillMaxWidth()
                         .testTag("floating_navigation_bar"),
@@ -281,7 +259,7 @@ fun BattFoApp(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(5.dp),
+                            .padding(horizontal = 4.dp, vertical = 3.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
