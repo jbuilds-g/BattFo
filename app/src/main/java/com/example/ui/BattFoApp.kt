@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +45,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -89,7 +92,7 @@ private fun RowScope.ExpressivePillNavItem(
     onClick: () -> Unit
 ) {
     val containerColor by androidx.compose.animation.animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        targetValue = if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -173,7 +176,7 @@ fun BattFoApp(
     val telemetry by viewModel.currentTelemetry.collectAsStateWithLifecycle()
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val showNavLabels = maxWidth >= 430.dp
+        val showNavLabels = true
 
         Scaffold(
             topBar = {
@@ -270,8 +273,9 @@ fun BattFoApp(
                         .testTag("floating_navigation_bar"),
                     shape = RoundedCornerShape(28.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     tonalElevation = 3.dp,
-                    shadowElevation = 6.dp
+                    shadowElevation = 10.dp
                 ) {
                     Row(
                         modifier = Modifier
