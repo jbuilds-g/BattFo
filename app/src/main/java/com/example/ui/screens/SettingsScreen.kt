@@ -114,6 +114,38 @@ fun SettingsScreen(
     var showLicenseDialog by remember { mutableStateOf(false) }
     var importJsonText by remember { mutableStateOf("") }
     var githubProfile by remember { mutableStateOf<com.example.data.github.GitHubProfile?>(null) }
+    var pendingBackupJson by remember { mutableStateOf<String?>(null) }
+    var showRestoreConfirmDialog by remember { mutableStateOf(false) }
+
+    val createBackupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        val json = pendingBackupJson ?: return@rememberLauncherForActivityResult
+        if (uri == null) return@rememberLauncherForActivityResult
+        runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { output ->
+                output.write(json.toByteArray(Charsets.UTF_8))
+            } ?: error("Unable to open backup file")
+            Toast.makeText(context, "Backup saved", Toast.LENGTH_SHORT).show()
+        }.onFailure {
+            Toast.makeText(context, "Failed to save backup", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val restoreBackupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        runCatching {
+            context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                ?: error("Unable to read backup file")
+        }.onSuccess { json ->
+            pendingBackupJson = json
+            showRestoreConfirmDialog = true
+        }.onFailure {
+            Toast.makeText(context, "Failed to read backup file", Toast.LENGTH_LONG).show()
+        }
+    }
 
     LaunchedEffect(Unit) {
         githubProfile = GitHubProfileRepository.loadProfile()
@@ -646,27 +678,26 @@ fun SettingsScreen(
                     OutlinedButton(
                         onClick = {
                             scope.launch {
-                                val json = viewModel.exportDataJson()
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText("BattFo Battery Data", json)
-                                clipboard.setPrimaryClip(clip)
-                                Toast.makeText(context, "Exported JSON copied to clipboard", Toast.LENGTH_LONG).show()
+                                pendingBackupJson = viewModel.createBackupJson()
+                                createBackupLauncher.launch("BattFo-Backup-" + System.currentTimeMillis() + ".battfo")
                             }
                         },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Export JSON")
+                        Text("Backup")
                     }
 
                     OutlinedButton(
-                        onClick = { showImportDialog = true },
+                        onClick = {
+                            restoreBackupLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
+                        },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(imageVector = Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Import JSON")
+                        Text("Restore")
                     }
                 }
 
@@ -922,52 +953,77 @@ SOFTWARE.""",
         )
     }
 
-    // Import JSON Dialog
-    if (showImportDialog) {
+    // Restore confirmation dialog
+    if (showRestoreConfirmDialog) {
         AlertDialog(
-            onDismissRequest = { showImportDialog = false },
-            title = { Text("Import Telemetry JSON") },
+            onDismissRequest = {
+                showRestoreConfirmDialog = false
+                pendingBackupJson = null
+            },
+            title = { Text("Restore BattFo Backup?") },
             text = {
-                Column {
-                    Text(
-                        text = "Paste previously exported BattFo JSON data:",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = importJsonText,
-                        onValueChange = { importJsonText = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(150.dp),
-                        placeholder = { Text("{\"version\": 1, \"snapshots\": [...]}") }
-                    )
-                }
+                Text("This will replace your current battery history and all BattFo settings with the contents of the selected backup.")
             },
             confirmButton = {
                 Button(
                     onClick = {
+                        val json = pendingBackupJson
+                        if (json == null) {
+                            showRestoreConfirmDialog = false
+                            return@Button
+                        }
                         scope.launch {
-                            val success = viewModel.importDataJson(importJsonText)
-                            if (success) {
-                                Toast.makeText(context, "Data imported successfully!", Toast.LENGTH_SHORT).show()
-                                showImportDialog = false
-                                importJsonText = ""
-                            } else {
-                                Toast.makeText(context, "Failed to parse JSON. Check format.", Toast.LENGTH_LONG).show()
-                            }
+                            val success = viewModel.restoreBackupJson(json)
+                            Toast.makeText(
+                                context,
+                                if (success) "Backup restored successfully" else "Invalid or unsupported backup file",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            showRestoreConfirmDialog = false
+                            pendingBackupJson = null
                         }
                     }
                 ) {
-                    Text("Import")
+                    Text("Restore")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showImportDialog = false }) {
+                TextButton(onClick = {
+                    showRestoreConfirmDialog = false
+                    pendingBackupJson = null
+                }) {
                     Text("Cancel")
                 }
             }
         )
+    }
+
+    // Clear confirmation dialog
+    if (showClearConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmDialog = false },
+            title = { Text("Clear All History?") },
+            text = { Text("This will permanently delete all recorded battery snapshots and charging session logs from your device.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearAllHistory()
+                        showClearConfirmDialog = false
+                        Toast.makeText(context, "History cleared", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Clear History")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     }
 }
 
