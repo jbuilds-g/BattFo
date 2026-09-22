@@ -60,6 +60,7 @@ private val LightColorScheme = lightColorScheme(
 fun BattFoTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     dynamicColor: Boolean = true,
+    amoledMode: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (themeMode) {
