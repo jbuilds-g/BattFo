@@ -78,8 +78,17 @@ fun BattFoTheme(
         else -> LightColorScheme
     }
 
+    val finalColorScheme = if (amoledMode && darkTheme) {
+        colorScheme.copy(
+            background = Color.Black,
+            surface = Color.Black
+        )
+    } else {
+        colorScheme
+    }
+
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = finalColorScheme,
         typography = Typography,
         shapes = BattFoShapes,
         content = content
