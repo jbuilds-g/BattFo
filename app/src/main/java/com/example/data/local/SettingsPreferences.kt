@@ -41,6 +41,10 @@ class SettingsPreferences(context: Context) {
         )
     }
 
+    fun resetSettings() {
+        updateSettings(UserSettings())
+    }
+
     fun updateSettings(newSettings: UserSettings) {
         prefs.edit()
             .putString("theme_mode", newSettings.themeMode.name)
