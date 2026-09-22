@@ -1,6 +1,7 @@
 package com.example.data.repository
 
 import android.content.Context
+import androidx.room.withTransaction
 import com.example.data.local.BattFoDatabase
 import com.example.data.local.SettingsPreferences
 import com.example.data.local.entity.BatterySnapshotEntity
@@ -194,64 +195,124 @@ class BatteryRepository(private val context: Context) {
         sessionDao.deleteAll()
     }
 
-    suspend fun exportDataJson(): String {
+    suspend fun createBackupJson(): String {
         val snapshots = snapshotDao.getAllSnapshotsList()
         val sessions = sessionDao.getAllSessionsList()
+        val currentSettings = preferences.settings.value
 
-        val root = JSONObject()
+        val settingsJson = JSONObject().apply {
+            put("themeMode", currentSettings.themeMode.name)
+            put("useDynamicColor", currentSettings.useDynamicColor)
+            put("amoledMode", currentSettings.amoledMode)
+            put("temperatureUnit", currentSettings.temperatureUnit.name)
+            put("configuredCapacityMah", currentSettings.configuredCapacityMah)
+            put("dataRetentionDays", currentSettings.dataRetentionDays)
+            put("samplingIntervalSeconds", currentSettings.samplingIntervalSeconds)
+            put("lowBatteryAlertEnabled", currentSettings.lowBatteryAlertEnabled)
+            put("lowBatteryThreshold", currentSettings.lowBatteryThreshold)
+            put("fullChargeAlertEnabled", currentSettings.fullChargeAlertEnabled)
+            put("fullChargeThreshold", currentSettings.fullChargeThreshold)
+            put("highTempAlertEnabled", currentSettings.highTempAlertEnabled)
+            put("highTempThresholdC", currentSettings.highTempThresholdC.toDouble())
+            put("slowChargingAlertEnabled", currentSettings.slowChargingAlertEnabled)
+            put("unusualDrainAlertEnabled", currentSettings.unusualDrainAlertEnabled)
+        }
+
         val snapshotArray = JSONArray()
-        for (s in snapshots) {
-            val obj = JSONObject().apply {
-                put("timestamp", s.timestamp)
-                put("percentage", s.percentage)
-                put("status", s.status)
-                put("plugType", s.plugType)
-                put("voltageMv", s.voltageMv ?: JSONObject.NULL)
-                put("temperatureC", s.temperatureC ?: JSONObject.NULL)
-                put("currentNowMa", s.currentNowMa ?: JSONObject.NULL)
-                put("powerWatts", s.powerWatts ?: JSONObject.NULL)
-                put("isScreenOn", s.isScreenOn)
-            }
-            snapshotArray.put(obj)
+        snapshots.forEach { snapshot ->
+            snapshotArray.put(JSONObject().apply {
+                put("timestamp", snapshot.timestamp)
+                put("percentage", snapshot.percentage)
+                put("status", snapshot.status)
+                put("plugType", snapshot.plugType)
+                put("voltageMv", snapshot.voltageMv ?: JSONObject.NULL)
+                put("temperatureC", snapshot.temperatureC?.toDouble() ?: JSONObject.NULL)
+                put("currentNowMa", snapshot.currentNowMa ?: JSONObject.NULL)
+                put("currentAverageMa", snapshot.currentAverageMa ?: JSONObject.NULL)
+                put("powerWatts", snapshot.powerWatts ?: JSONObject.NULL)
+                put("isScreenOn", snapshot.isScreenOn)
+            })
         }
 
         val sessionArray = JSONArray()
-        for (ss in sessions) {
-            val obj = JSONObject().apply {
-                put("startTime", ss.startTime)
-                put("endTime", ss.endTime ?: JSONObject.NULL)
-                put("startPercentage", ss.startPercentage)
-                put("endPercentage", ss.endPercentage)
-                put("plugType", ss.plugType)
-                put("peakCurrentMa", ss.peakCurrentMa)
-                put("avgCurrentMa", ss.avgCurrentMa)
-                put("peakWattage", ss.peakWattage)
-                put("avgWattage", ss.avgWattage)
-                put("maxTemperatureC", ss.maxTemperatureC)
-            }
-            sessionArray.put(obj)
+        sessions.forEach { session ->
+            sessionArray.put(JSONObject().apply {
+                put("startTime", session.startTime)
+                put("endTime", session.endTime ?: JSONObject.NULL)
+                put("startPercentage", session.startPercentage)
+                put("endPercentage", session.endPercentage)
+                put("plugType", session.plugType)
+                put("peakCurrentMa", session.peakCurrentMa)
+                put("avgCurrentMa", session.avgCurrentMa)
+                put("peakWattage", session.peakWattage)
+                put("avgWattage", session.avgWattage)
+                put("maxTemperatureC", session.maxTemperatureC.toDouble())
+                put("isCompleted", session.isCompleted)
+            })
         }
 
-        root.put("version", 1)
-        root.put("appName", "BattFo")
-        root.put("exportTime", System.currentTimeMillis())
-        root.put("snapshots", snapshotArray)
-        root.put("chargingSessions", sessionArray)
-
-        return root.toString(2)
+        return JSONObject().apply {
+            put("backupType", "battfo-backup")
+            put("schemaVersion", 1)
+            put("appName", "BattFo")
+            put("appVersion", com.jbuilds.battfo.BuildConfig.VERSION_NAME)
+            put("exportTime", System.currentTimeMillis())
+            put("settings", settingsJson)
+            put("batteryHistory", JSONObject().apply {
+                put("snapshots", snapshotArray)
+                put("chargingSessions", sessionArray)
+            })
+        }.toString(2)
     }
 
-    suspend fun importDataJson(jsonString: String): Boolean {
+    suspend fun restoreBackupJson(jsonString: String): Boolean {
         return try {
             val root = JSONObject(jsonString)
-            val snapshotArray = root.optJSONArray("snapshots")
-            val sessionArray = root.optJSONArray("chargingSessions")
+            if (root.optString("backupType") != "battfo-backup") return false
+            if (root.optInt("schemaVersion", -1) != 1) return false
 
-            if (snapshotArray != null) {
-                val snapshotList = mutableListOf<BatterySnapshotEntity>()
+            val settingsJson = root.getJSONObject("settings")
+            val historyJson = root.getJSONObject("batteryHistory")
+            val snapshotArray = historyJson.optJSONArray("snapshots") ?: JSONArray()
+            val sessionArray = historyJson.optJSONArray("chargingSessions") ?: JSONArray()
+
+            val themeMode = runCatching {
+                com.example.model.ThemeMode.valueOf(
+                    settingsJson.optString("themeMode", com.example.model.ThemeMode.SYSTEM.name)
+                )
+            }.getOrDefault(com.example.model.ThemeMode.SYSTEM)
+
+            val temperatureUnit = runCatching {
+                com.example.model.TemperatureUnit.valueOf(
+                    settingsJson.optString(
+                        "temperatureUnit",
+                        com.example.model.TemperatureUnit.CELSIUS.name
+                    )
+                )
+            }.getOrDefault(com.example.model.TemperatureUnit.CELSIUS)
+
+            val restoredSettings = com.example.model.UserSettings(
+                themeMode = themeMode,
+                useDynamicColor = settingsJson.optBoolean("useDynamicColor", true),
+                amoledMode = settingsJson.optBoolean("amoledMode", false),
+                temperatureUnit = temperatureUnit,
+                configuredCapacityMah = settingsJson.optInt("configuredCapacityMah", 4500),
+                dataRetentionDays = settingsJson.optInt("dataRetentionDays", 7),
+                samplingIntervalSeconds = settingsJson.optInt("samplingIntervalSeconds", 30),
+                lowBatteryAlertEnabled = settingsJson.optBoolean("lowBatteryAlertEnabled", false),
+                lowBatteryThreshold = settingsJson.optInt("lowBatteryThreshold", 20),
+                fullChargeAlertEnabled = settingsJson.optBoolean("fullChargeAlertEnabled", false),
+                fullChargeThreshold = settingsJson.optInt("fullChargeThreshold", 80),
+                highTempAlertEnabled = settingsJson.optBoolean("highTempAlertEnabled", false),
+                highTempThresholdC = settingsJson.optDouble("highTempThresholdC", 42.0).toFloat(),
+                slowChargingAlertEnabled = settingsJson.optBoolean("slowChargingAlertEnabled", false),
+                unusualDrainAlertEnabled = settingsJson.optBoolean("unusualDrainAlertEnabled", false)
+            )
+
+            val restoredSnapshots = buildList {
                 for (i in 0 until snapshotArray.length()) {
                     val obj = snapshotArray.getJSONObject(i)
-                    snapshotList.add(
+                    add(
                         BatterySnapshotEntity(
                             timestamp = obj.getLong("timestamp"),
                             percentage = obj.getInt("percentage"),
@@ -260,22 +321,18 @@ class BatteryRepository(private val context: Context) {
                             voltageMv = if (obj.isNull("voltageMv")) null else obj.getInt("voltageMv"),
                             temperatureC = if (obj.isNull("temperatureC")) null else obj.getDouble("temperatureC").toFloat(),
                             currentNowMa = if (obj.isNull("currentNowMa")) null else obj.getInt("currentNowMa"),
-                            currentAverageMa = null,
+                            currentAverageMa = if (obj.isNull("currentAverageMa")) null else obj.getInt("currentAverageMa"),
                             powerWatts = if (obj.isNull("powerWatts")) null else obj.getDouble("powerWatts"),
                             isScreenOn = obj.optBoolean("isScreenOn", true)
                         )
                     )
                 }
-                if (snapshotList.isNotEmpty()) {
-                    snapshotDao.insertAll(snapshotList)
-                }
             }
 
-            if (sessionArray != null) {
-                val sessionList = mutableListOf<ChargingSessionEntity>()
+            val restoredSessions = buildList {
                 for (i in 0 until sessionArray.length()) {
                     val obj = sessionArray.getJSONObject(i)
-                    sessionList.add(
+                    add(
                         ChargingSessionEntity(
                             startTime = obj.getLong("startTime"),
                             endTime = if (obj.isNull("endTime")) null else obj.getLong("endTime"),
@@ -287,17 +344,28 @@ class BatteryRepository(private val context: Context) {
                             peakWattage = obj.optDouble("peakWattage", 0.0),
                             avgWattage = obj.optDouble("avgWattage", 0.0),
                             maxTemperatureC = obj.optDouble("maxTemperatureC", 0.0).toFloat(),
-                            isCompleted = true
+                            isCompleted = obj.optBoolean("isCompleted", true)
                         )
                     )
                 }
-                if (sessionList.isNotEmpty()) {
-                    sessionDao.insertAll(sessionList)
+            }
+
+            database.withTransaction {
+                snapshotDao.deleteAll()
+                sessionDao.deleteAll()
+                if (restoredSnapshots.isNotEmpty()) {
+                    snapshotDao.insertAll(restoredSnapshots)
+                }
+                if (restoredSessions.isNotEmpty()) {
+                    sessionDao.insertAll(restoredSessions)
                 }
             }
+
+            preferences.updateSettings(restoredSettings)
             true
         } catch (_: Exception) {
             false
         }
     }
+
 }

@@ -25,6 +25,7 @@ class SettingsPreferences(context: Context) {
         return UserSettings(
             themeMode = themeMode,
             useDynamicColor = prefs.getBoolean("dynamic_color", true),
+            amoledMode = prefs.getBoolean("amoled_mode", false),
             temperatureUnit = tempUnit,
             configuredCapacityMah = prefs.getInt("configured_capacity_mah", 4500),
             dataRetentionDays = prefs.getInt("retention_days", 7),
@@ -40,10 +41,15 @@ class SettingsPreferences(context: Context) {
         )
     }
 
+    fun resetSettings() {
+        updateSettings(UserSettings())
+    }
+
     fun updateSettings(newSettings: UserSettings) {
         prefs.edit()
             .putString("theme_mode", newSettings.themeMode.name)
             .putBoolean("dynamic_color", newSettings.useDynamicColor)
+            .putBoolean("amoled_mode", newSettings.amoledMode)
             .putString("temp_unit", newSettings.temperatureUnit.name)
             .putInt("configured_capacity_mah", newSettings.configuredCapacityMah)
             .putInt("retention_days", newSettings.dataRetentionDays)

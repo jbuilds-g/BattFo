@@ -8,6 +8,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.example.model.ThemeMode
 
@@ -59,6 +60,7 @@ private val LightColorScheme = lightColorScheme(
 fun BattFoTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     dynamicColor: Boolean = true,
+    amoledMode: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (themeMode) {
@@ -76,9 +78,19 @@ fun BattFoTheme(
         else -> LightColorScheme
     }
 
+    val finalColorScheme = if (amoledMode && darkTheme) {
+        colorScheme.copy(
+            background = Color.Black,
+            surface = Color.Black
+        )
+    } else {
+        colorScheme
+    }
+
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = finalColorScheme,
         typography = Typography,
+        shapes = BattFoShapes,
         content = content
     )
 }

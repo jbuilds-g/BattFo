@@ -77,19 +77,19 @@ class BatteryViewModel(application: Application) : AndroidViewModel(application)
         repository.preferences.updateSettings(newSettings)
     }
 
+    fun resetSettings() {
+        repository.preferences.resetSettings()
+    }
+
     fun clearAllHistory() {
         viewModelScope.launch {
             repository.clearAllHistory()
         }
     }
 
-    suspend fun exportDataJson(): String {
-        return repository.exportDataJson()
-    }
+    suspend fun createBackupJson(): String = repository.createBackupJson()
 
-    suspend fun importDataJson(jsonString: String): Boolean {
-        return repository.importDataJson(jsonString)
-    }
+    suspend fun restoreBackupJson(jsonString: String): Boolean = repository.restoreBackupJson(jsonString)
 
     fun formatTemperature(tempC: Float?): String {
         if (tempC == null) return "Unavailable"

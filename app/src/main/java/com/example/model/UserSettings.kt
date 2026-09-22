@@ -14,6 +14,7 @@ enum class TemperatureUnit {
 data class UserSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val useDynamicColor: Boolean = true,
+    val amoledMode: Boolean = false,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
     val configuredCapacityMah: Int = 4500,
     val dataRetentionDays: Int = 7, // 1, 7, 30, -1 for unlimited

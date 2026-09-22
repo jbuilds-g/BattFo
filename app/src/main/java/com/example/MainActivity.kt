@@ -26,7 +26,8 @@ class MainActivity : ComponentActivity() {
 
             BattFoTheme(
                 themeMode = settings.themeMode,
-                dynamicColor = settings.useDynamicColor
+                dynamicColor = settings.useDynamicColor,
+                amoledMode = settings.amoledMode
             ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     BattFoApp(viewModel = viewModel)

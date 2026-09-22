@@ -23,7 +23,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -42,6 +45,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
@@ -49,7 +54,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -61,10 +65,12 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -72,6 +78,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -80,6 +88,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.github.GitHubProfileRepository
 import com.example.model.TemperatureUnit
 import com.example.model.ThemeMode
 import com.example.ui.viewmodel.BatteryViewModel
@@ -101,8 +110,52 @@ fun SettingsScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var showClearConfirmDialog by remember { mutableStateOf(false) }
+    var showResetSettingsConfirmDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
+    var showLicenseDialog by remember { mutableStateOf(false) }
     var importJsonText by remember { mutableStateOf("") }
+    var githubProfile by remember { mutableStateOf<com.example.data.github.GitHubProfile?>(null) }
+    var pendingBackupJson by remember { mutableStateOf<String?>(null) }
+    var showRestoreConfirmDialog by remember { mutableStateOf(false) }
+
+    val createBackupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        val json = pendingBackupJson ?: return@rememberLauncherForActivityResult
+        if (uri == null) return@rememberLauncherForActivityResult
+        runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { output ->
+                output.write(json.toByteArray(Charsets.UTF_8))
+            } ?: error("Unable to open backup file")
+            Toast.makeText(context, "Backup saved", Toast.LENGTH_SHORT).show()
+        }.onFailure {
+            Toast.makeText(context, "Failed to save backup", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val restoreBackupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        runCatching {
+            context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                ?: error("Unable to read backup file")
+        }.onSuccess { json ->
+            pendingBackupJson = json
+            showRestoreConfirmDialog = true
+        }.onFailure {
+            Toast.makeText(context, "Failed to read backup file", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        githubProfile = GitHubProfileRepository.loadProfile()
+    }
+
+    var appearanceExpanded by rememberSaveable { mutableStateOf(true) }
+    var batteryExpanded by rememberSaveable { mutableStateOf(false) }
+    var alertsExpanded by rememberSaveable { mutableStateOf(false) }
+    var dataExpanded by rememberSaveable { mutableStateOf(false) }
 
     // Track system notification permission state
     val requiresNotificationPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -155,7 +208,12 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Section: Appearance
-        SettingsSectionHeader(title = "Appearance", icon = Icons.Default.Palette)
+        CollapsibleSettingsSection(
+            title = "Appearance",
+            icon = Icons.Default.Palette,
+            expanded = appearanceExpanded,
+            onExpandedChange = { appearanceExpanded = !appearanceExpanded }
+        ) {
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -217,11 +275,40 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.updateSettings(settings.copy(useDynamicColor = it)) }
                     )
                 }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "AMOLED Mode",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Use pure black surfaces when dark theme is active",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = settings.amoledMode,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(amoledMode = it)) }
+                    )
+                }
             }
         }
 
-        // Section: Battery & Units
-        SettingsSectionHeader(title = "Battery & Units", icon = Icons.Default.Thermostat)
+                }
+
+// Section: Battery & Units
+        CollapsibleSettingsSection(
+            title = "Battery & Units",
+            icon = Icons.Default.Thermostat,
+            expanded = batteryExpanded,
+            onExpandedChange = { batteryExpanded = !batteryExpanded }
+        ) {
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -281,8 +368,15 @@ fun SettingsScreen(
             }
         }
 
-        // Section: Notifications & Alerts
-        SettingsSectionHeader(title = "Alerts & Notifications", icon = Icons.Default.Notifications)
+                }
+
+// Section: Notifications & Alerts
+        CollapsibleSettingsSection(
+            title = "Alerts & Notifications",
+            icon = Icons.Default.Notifications,
+            expanded = alertsExpanded,
+            onExpandedChange = { alertsExpanded = !alertsExpanded }
+        ) {
 
         // Notification permission status card (especially critical on Android 13+)
         Card(
@@ -531,8 +625,15 @@ fun SettingsScreen(
             }
         }
 
-        // Section: Data & Storage
-        SettingsSectionHeader(title = "Data & History Management", icon = Icons.Default.Settings)
+                }
+
+// Section: Data & Storage
+        CollapsibleSettingsSection(
+            title = "Data & Backup",
+            icon = Icons.Default.Settings,
+            expanded = dataExpanded,
+            onExpandedChange = { dataExpanded = !dataExpanded }
+        ) {
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -571,6 +672,23 @@ fun SettingsScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Full Backup & Restore",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Back up all BattFo settings, preferences, and battery history to a file. Restore everything from a previous backup.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -578,27 +696,26 @@ fun SettingsScreen(
                     OutlinedButton(
                         onClick = {
                             scope.launch {
-                                val json = viewModel.exportDataJson()
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText("BattFo Battery Data", json)
-                                clipboard.setPrimaryClip(clip)
-                                Toast.makeText(context, "Exported JSON copied to clipboard", Toast.LENGTH_LONG).show()
+                                pendingBackupJson = viewModel.createBackupJson()
+                                createBackupLauncher.launch("BattFo-Backup-" + System.currentTimeMillis() + ".battfo")
                             }
                         },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Export JSON")
+                        Text("Create Backup")
                     }
 
                     OutlinedButton(
-                        onClick = { showImportDialog = true },
+                        onClick = {
+                            restoreBackupLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
+                        },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(imageVector = Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Import JSON")
+                        Text("Restore Backup")
                     }
                 }
 
@@ -611,105 +728,237 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Clear All Battery History")
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = { showResetSettingsConfirmDialog = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Reset All Settings")
+                }
+
+                }
             }
         }
 
-        // Section: About
-        SettingsSectionHeader(title = "About", icon = Icons.Default.Info)
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("about_card"),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 28.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Centered App Title
+// Section: About
                 Text(
-                    text = "BattFo",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    "About",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Centered App Icon with subtle container
                 Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(76.dp),
-                    tonalElevation = 2.dp
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainer
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                        contentDescription = "BattFo App Icon",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(8.dp)
-                    )
-                }
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(104.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(4.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "BattFo",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "Battery Monitor",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Surface(
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Text(
+                                    "v${BuildConfig.VERSION_NAME}",
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
 
-                // Version and GitHub Action Row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Dynamic App Version Chip
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.testTag("version_badge")
-                    ) {
+                        Spacer(modifier = Modifier.height(20.dp))
+
                         Text(
-                            text = "v${BuildConfig.VERSION_NAME}",
+                            "Developer",
                             style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    // Accessible GitHub Action Button
-                    FilledTonalButton(
-                        onClick = {
-                            val intent = Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse("https://github.com/jbuilds-g/BattFo")
-                            )
-                            context.startActivity(intent)
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.testTag("github_button")
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_github),
-                            contentDescription = "Open GitHub repository",
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "GitHub",
-                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        val avatar = githubProfile?.avatar
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        context.startActivity(
+                                            Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/jbuilds-g"))
+                                        )
+                                    }
+                                )
+                                .testTag("developer_card"),
+                            shape = MaterialTheme.shapes.medium,
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (avatar != null) {
+                                    Image(
+                                        bitmap = avatar.asImageBitmap(),
+                                        contentDescription = "JBuilds GitHub profile picture",
+                                        modifier = Modifier
+                                            .size(52.dp)
+                                            .clip(androidx.compose.foundation.shape.CircleShape)
+                                    )
+                                } else {
+                                    Surface(
+                                        shape = androidx.compose.foundation.shape.CircleShape,
+                                        color = MaterialTheme.colorScheme.secondaryContainer,
+                                        modifier = Modifier.size(52.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_github),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.padding(12.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.weight(1f))
+                                Column(
+                                    horizontalAlignment = Alignment.End
+                                ) {
+                                    Text(
+                                        githubProfile?.name ?: "JBuilds",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        "@${githubProfile?.login ?: "jbuilds-g"}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { showLicenseDialog = true },
+                                modifier = Modifier.weight(1f).testTag("license_button"),
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Icon(
+                                    Icons.Default.Security,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("MIT License", maxLines = 1)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    context.startActivity(
+                                        Intent(
+                                            Intent.ACTION_VIEW,
+                                            Uri.parse("https://github.com/jbuilds-g/BattFo")
+                                        )
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_github),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("View Source", maxLines = 1)
+                            }
+                        }
                     }
                 }
+    }
+
+    if (showLicenseDialog) {
+        AlertDialog(
+            onDismissRequest = { showLicenseDialog = false },
+            title = { Text("MIT License") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth().height(420.dp).verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = """MIT License
+
+Copyright (c) 2026 JBuilds
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.""",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLicenseDialog = false }) { Text("Done") }
             }
-        }
+        )
     }
 
     // Clear confirmation dialog
@@ -738,78 +987,165 @@ fun SettingsScreen(
         )
     }
 
-    // Import JSON Dialog
-    if (showImportDialog) {
+    if (showResetSettingsConfirmDialog) {
         AlertDialog(
-            onDismissRequest = { showImportDialog = false },
-            title = { Text("Import Telemetry JSON") },
+            onDismissRequest = { showResetSettingsConfirmDialog = false },
+            title = { Text("Reset All Settings?") },
             text = {
-                Column {
-                    Text(
-                        text = "Paste previously exported BattFo JSON data:",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = importJsonText,
-                        onValueChange = { importJsonText = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(150.dp),
-                        placeholder = { Text("{\"version\": 1, \"snapshots\": [...]}") }
-                    )
-                }
+                Text("This will restore every BattFo setting to its default value. Your battery history will not be deleted.")
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        scope.launch {
-                            val success = viewModel.importDataJson(importJsonText)
-                            if (success) {
-                                Toast.makeText(context, "Data imported successfully!", Toast.LENGTH_SHORT).show()
-                                showImportDialog = false
-                                importJsonText = ""
-                            } else {
-                                Toast.makeText(context, "Failed to parse JSON. Check format.", Toast.LENGTH_LONG).show()
-                            }
-                        }
+                        viewModel.resetSettings()
+                        showResetSettingsConfirmDialog = false
+                        Toast.makeText(context, "Settings reset to defaults", Toast.LENGTH_SHORT).show()
                     }
                 ) {
-                    Text("Import")
+                    Text("Reset Settings")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showImportDialog = false }) {
+                TextButton(onClick = { showResetSettingsConfirmDialog = false }) {
                     Text("Cancel")
                 }
             }
         )
     }
+
+    // Restore confirmation dialog
+    if (showRestoreConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showRestoreConfirmDialog = false
+                pendingBackupJson = null
+            },
+            title = { Text("Restore BattFo Backup?") },
+            text = {
+                Text("This will replace your current battery history and all BattFo settings with the contents of the selected backup.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val json = pendingBackupJson
+                        if (json == null) {
+                            showRestoreConfirmDialog = false
+                            return@Button
+                        }
+                        scope.launch {
+                            val success = viewModel.restoreBackupJson(json)
+                            Toast.makeText(
+                                context,
+                                if (success) "Backup restored successfully" else "Invalid or unsupported backup file",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            showRestoreConfirmDialog = false
+                            pendingBackupJson = null
+                        }
+                    }
+                ) {
+                    Text("Restore")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showRestoreConfirmDialog = false
+                    pendingBackupJson = null
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Clear confirmation dialog
+    if (showClearConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmDialog = false },
+            title = { Text("Clear All History?") },
+            text = { Text("This will permanently delete all recorded battery snapshots and charging session logs from your device.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearAllHistory()
+                        showClearConfirmDialog = false
+                        Toast.makeText(context, "History cleared", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Clear History")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
 }
 
 @Composable
-private fun SettingsSectionHeader(
+private fun CollapsibleSettingsSection(
     title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    expanded: Boolean,
+    onExpandedChange: () -> Unit,
+    content: @Composable () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onExpandedChange
+                ),
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    imageVector = if (expanded) {
+                        Icons.Default.KeyboardArrowDown
+                    } else {
+                        Icons.Default.KeyboardArrowRight
+                    },
+                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        AnimatedVisibility(visible = expanded) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                content()
+            }
+        }
     }
 }

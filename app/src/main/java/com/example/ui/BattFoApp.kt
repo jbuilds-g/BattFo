@@ -1,22 +1,37 @@
 package com.example.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.History
@@ -31,11 +46,9 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,6 +56,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -72,6 +86,92 @@ enum class BattFoDestination(
     SETTINGS("settings", "Settings", Icons.Filled.Settings, Icons.Outlined.Settings)
 }
 
+@Composable
+private fun RowScope.ExpressivePillNavItem(
+    destination: BattFoDestination,
+    selected: Boolean,
+    showLabel: Boolean,
+    onClick: () -> Unit
+) {
+    val containerColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "navContainerColor"
+    )
+    val contentColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "navContentColor"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.96f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "navScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .height(44.dp)
+            .wrapContentWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .background(containerColor, CircleShape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = if (selected && showLabel) 16.dp else 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = if (selected) destination.selectedIcon else destination.unselectedIcon,
+                contentDescription = destination.title,
+                tint = contentColor,
+                modifier = Modifier.size(20.dp)
+            )
+            AnimatedVisibility(
+                visible = selected && showLabel,
+                enter = expandHorizontally(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) + fadeIn(),
+                exit = shrinkHorizontally(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) + fadeOut()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = destination.title,
+                        color = contentColor,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BattFoApp(
@@ -82,7 +182,7 @@ fun BattFoApp(
     val telemetry by viewModel.currentTelemetry.collectAsStateWithLifecycle()
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val isWideScreen = maxWidth >= 600.dp
+        val showNavLabels = true
 
         Scaffold(
             topBar = {
@@ -104,114 +204,61 @@ fun BattFoApp(
                             )
                         }
                     },
-                    actions = {
-                        // Quick status pill in top app bar
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-                            modifier = Modifier.padding(end = 12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(7.dp)
-                                        .background(
-                                            if (telemetry.isCharging) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-                                            CircleShape
-                                        )
-                                )
-                                Spacer(modifier = Modifier.width(5.dp))
-                                Text(
-                                    text = "${telemetry.percentage}%",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-                    },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background
                     )
                 )
-            },
-            bottomBar = {
-                if (!isWideScreen) {
-                    NavigationBar(
-                        modifier = Modifier.testTag("bottom_navigation_bar"),
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ) {
-                        BattFoDestination.entries.forEach { destination ->
-                            val selected = currentDestination == destination
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = { currentDestination = destination },
-                                icon = {
-                                    Icon(
-                                        imageVector = if (selected) destination.selectedIcon else destination.unselectedIcon,
-                                        contentDescription = destination.title
-                                    )
-                                },
-                                label = { Text(destination.title) },
-                                modifier = Modifier.testTag("nav_${destination.route}")
-                            )
-                        }
-                    }
-                }
             }
         ) { innerPadding ->
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                if (isWideScreen) {
-                    NavigationRail(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .testTag("navigation_rail"),
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        BattFoDestination.entries.forEach { destination ->
-                            val selected = currentDestination == destination
-                            NavigationRailItem(
-                                selected = selected,
-                                onClick = { currentDestination = destination },
-                                icon = {
-                                    Icon(
-                                        imageVector = if (selected) destination.selectedIcon else destination.unselectedIcon,
-                                        contentDescription = destination.title
-                                    )
-                                },
-                                label = { Text(destination.title) },
-                                modifier = Modifier.testTag("rail_${destination.route}")
-                            )
-                        }
-                    }
-                }
-
-                // Content area centered with max width on large screens
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .weight(1f),
-                    contentAlignment = Alignment.TopCenter
+                        .padding(bottom = 76.dp)
+                        .widthIn(max = 840.dp)
+                        .align(Alignment.TopCenter)
                 ) {
-                    Box(
+                    when (currentDestination) {
+                        BattFoDestination.DASHBOARD -> DashboardScreen(viewModel = viewModel)
+                        BattFoDestination.DETAILS -> DetailsScreen(viewModel = viewModel)
+                        BattFoDestination.CHARGING -> ChargingScreen(viewModel = viewModel)
+                        BattFoDestination.HISTORY -> HistoryScreen(viewModel = viewModel)
+                        BattFoDestination.SETTINGS -> SettingsScreen(viewModel = viewModel)
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(horizontal = 12.dp, vertical = 7.dp)
+                        .widthIn(max = 420.dp)
+                        .wrapContentWidth()
+                        .testTag("floating_navigation_bar"),
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    tonalElevation = 3.dp,
+                    shadowElevation = 10.dp
+                ) {
+                    Row(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .widthIn(max = 840.dp)
+                            .wrapContentWidth()
+                            .padding(horizontal = 4.dp, vertical = 3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        when (currentDestination) {
-                            BattFoDestination.DASHBOARD -> DashboardScreen(viewModel = viewModel)
-                            BattFoDestination.DETAILS -> DetailsScreen(viewModel = viewModel)
-                            BattFoDestination.CHARGING -> ChargingScreen(viewModel = viewModel)
-                            BattFoDestination.HISTORY -> HistoryScreen(viewModel = viewModel)
-                            BattFoDestination.SETTINGS -> SettingsScreen(viewModel = viewModel)
+                        BattFoDestination.entries.forEach { destination ->
+                            ExpressivePillNavItem(
+                                destination = destination,
+                                selected = currentDestination == destination,
+                                showLabel = showNavLabels,
+                                onClick = { currentDestination = destination }
+                            )
                         }
                     }
                 }
