@@ -204,17 +204,6 @@ fun BattFoApp(
                             )
                         }
                     },
-                    actions = {
-                        IconButton(
-                            onClick = { currentDestination = BattFoDestination.SETTINGS },
-                            modifier = Modifier.testTag("nav_settings")
-                        ) {
-                            Icon(
-                                imageVector = if (currentDestination == BattFoDestination.SETTINGS) Icons.Filled.Settings else Icons.Outlined.Settings,
-                                contentDescription = "Settings"
-                            )
-                        }
-                    },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background
                     )
@@ -263,7 +252,7 @@ fun BattFoApp(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        BattFoDestination.entries.filter { it != BattFoDestination.SETTINGS }.forEach { destination ->
+                        BattFoDestination.entries.forEach { destination ->
                             ExpressivePillNavItem(
                                 destination = destination,
                                 selected = currentDestination == destination,
