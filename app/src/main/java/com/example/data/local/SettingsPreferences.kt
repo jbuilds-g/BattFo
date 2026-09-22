@@ -45,6 +45,7 @@ class SettingsPreferences(context: Context) {
         prefs.edit()
             .putString("theme_mode", newSettings.themeMode.name)
             .putBoolean("dynamic_color", newSettings.useDynamicColor)
+            .putBoolean("amoled_mode", newSettings.amoledMode)
             .putString("temp_unit", newSettings.temperatureUnit.name)
             .putInt("configured_capacity_mah", newSettings.configuredCapacityMah)
             .putInt("retention_days", newSettings.dataRetentionDays)
