@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.shape.CircleShape
@@ -116,14 +117,14 @@ private fun RowScope.ExpressivePillNavItem(
     Box(
         modifier = Modifier
             .height(48.dp)
-            .weight(1f)
+            .wrapContentWidth()
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
             .background(containerColor, CircleShape)
             .clickable(onClick = onClick)
-            .padding(horizontal = if (selected && showLabel) 10.dp else 8.dp),
+            .padding(horizontal = if (selected && showLabel) 16.dp else 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -156,8 +157,8 @@ private fun RowScope.ExpressivePillNavItem(
                     Text(
                         text = destination.title,
                         color = contentColor,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.ExtraBold,
                         maxLines = 1
                     )
                 }
