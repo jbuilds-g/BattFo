@@ -849,6 +849,7 @@ fun SettingsScreen(
                         }
                     }
                 }
+            }
     if (showLicenseDialog) {
         AlertDialog(
             onDismissRequest = { showLicenseDialog = false },
