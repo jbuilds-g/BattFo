@@ -25,6 +25,7 @@ class SettingsPreferences(context: Context) {
         return UserSettings(
             themeMode = themeMode,
             useDynamicColor = prefs.getBoolean("dynamic_color", true),
+            amoledMode = prefs.getBoolean("amoled_mode", false),
             temperatureUnit = tempUnit,
             configuredCapacityMah = prefs.getInt("configured_capacity_mah", 4500),
             dataRetentionDays = prefs.getInt("retention_days", 7),
