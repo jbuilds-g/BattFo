@@ -110,6 +110,7 @@ fun SettingsScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var showClearConfirmDialog by remember { mutableStateOf(false) }
+    var showResetSettingsConfirmDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var showLicenseDialog by remember { mutableStateOf(false) }
     var importJsonText by remember { mutableStateOf("") }
@@ -726,6 +727,21 @@ fun SettingsScreen(
                     Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Clear All Battery History")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = { showResetSettingsConfirmDialog = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Reset All Settings")
+                }
+
                 }
             }
         }
@@ -964,6 +980,32 @@ SOFTWARE.""",
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showResetSettingsConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetSettingsConfirmDialog = false },
+            title = { Text("Reset All Settings?") },
+            text = {
+                Text("This will restore every BattFo setting to its default value. Your battery history will not be deleted.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.resetSettings()
+                        showResetSettingsConfirmDialog = false
+                        Toast.makeText(context, "Settings reset to defaults", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text("Reset Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetSettingsConfirmDialog = false }) {
                     Text("Cancel")
                 }
             }
