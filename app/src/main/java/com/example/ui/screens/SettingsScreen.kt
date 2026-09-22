@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -113,7 +114,6 @@ fun SettingsScreen(
     var batteryExpanded by rememberSaveable { mutableStateOf(false) }
     var alertsExpanded by rememberSaveable { mutableStateOf(false) }
     var dataExpanded by rememberSaveable { mutableStateOf(false) }
-    var aboutExpanded by rememberSaveable { mutableStateOf(false) }
 
     // Track system notification permission state
     val requiresNotificationPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -676,12 +676,24 @@ fun SettingsScreen(
                 }
 
 // Section: About
-        CollapsibleSettingsSection(
-            title = "About",
-            icon = Icons.Default.Info,
-            expanded = aboutExpanded,
-            onExpandedChange = { aboutExpanded = !aboutExpanded }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "About",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
 
         Card(
             modifier = Modifier
@@ -778,8 +790,6 @@ fun SettingsScreen(
         }
     }
 
-        }
-
     // Clear confirmation dialog
     if (showClearConfirmDialog) {
         AlertDialog(
@@ -870,7 +880,11 @@ private fun CollapsibleSettingsSection(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onExpandedChange),
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onExpandedChange
+                ),
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
