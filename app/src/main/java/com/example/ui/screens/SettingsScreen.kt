@@ -727,6 +727,8 @@ fun SettingsScreen(
                     Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Clear All Battery History")
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedButton(
