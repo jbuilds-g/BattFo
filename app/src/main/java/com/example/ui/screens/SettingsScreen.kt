@@ -23,7 +23,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -42,6 +44,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
@@ -65,6 +69,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -103,6 +108,12 @@ fun SettingsScreen(
     var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var importJsonText by remember { mutableStateOf("") }
+
+    var appearanceExpanded by rememberSaveable { mutableStateOf(true) }
+    var batteryExpanded by rememberSaveable { mutableStateOf(false) }
+    var alertsExpanded by rememberSaveable { mutableStateOf(false) }
+    var dataExpanded by rememberSaveable { mutableStateOf(false) }
+    var aboutExpanded by rememberSaveable { mutableStateOf(false) }
 
     // Track system notification permission state
     val requiresNotificationPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -155,7 +166,12 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Section: Appearance
-        SettingsSectionHeader(title = "Appearance", icon = Icons.Default.Palette)
+        CollapsibleSettingsSection(
+            title = "Appearance",
+            icon = Icons.Default.Palette,
+            expanded = appearanceExpanded,
+            onExpandedChange = { appearanceExpanded = !appearanceExpanded }
+        ) {
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -217,11 +233,40 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.updateSettings(settings.copy(useDynamicColor = it)) }
                     )
                 }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "AMOLED Mode",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Use pure black surfaces when dark theme is active",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = settings.amoledMode,
+                        onCheckedChange = { viewModel.updateSettings(settings.copy(amoledMode = it)) }
+                    )
+                }
             }
         }
 
-        // Section: Battery & Units
-        SettingsSectionHeader(title = "Battery & Units", icon = Icons.Default.Thermostat)
+                }
+
+// Section: Battery & Units
+        CollapsibleSettingsSection(
+            title = "Battery & Units",
+            icon = Icons.Default.Thermostat,
+            expanded = batteryExpanded,
+            onExpandedChange = { batteryExpanded = !batteryExpanded }
+        ) {
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -281,8 +326,15 @@ fun SettingsScreen(
             }
         }
 
-        // Section: Notifications & Alerts
-        SettingsSectionHeader(title = "Alerts & Notifications", icon = Icons.Default.Notifications)
+                }
+
+// Section: Notifications & Alerts
+        CollapsibleSettingsSection(
+            title = "Alerts & Notifications",
+            icon = Icons.Default.Notifications,
+            expanded = alertsExpanded,
+            onExpandedChange = { alertsExpanded = !alertsExpanded }
+        ) {
 
         // Notification permission status card (especially critical on Android 13+)
         Card(
@@ -531,8 +583,15 @@ fun SettingsScreen(
             }
         }
 
-        // Section: Data & Storage
-        SettingsSectionHeader(title = "Data & History Management", icon = Icons.Default.Settings)
+                }
+
+// Section: Data & Storage
+        CollapsibleSettingsSection(
+            title = "Data & History Management",
+            icon = Icons.Default.Settings,
+            expanded = dataExpanded,
+            onExpandedChange = { dataExpanded = !dataExpanded }
+        ) {
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -614,8 +673,15 @@ fun SettingsScreen(
             }
         }
 
-        // Section: About
-        SettingsSectionHeader(title = "About", icon = Icons.Default.Info)
+                }
+
+// Section: About
+        CollapsibleSettingsSection(
+            title = "About",
+            icon = Icons.Default.Info,
+            expanded = aboutExpanded,
+            onExpandedChange = { aboutExpanded = !aboutExpanded }
+        ) {
 
         Card(
             modifier = Modifier
@@ -712,6 +778,8 @@ fun SettingsScreen(
         }
     }
 
+        }
+
     // Clear confirmation dialog
     if (showClearConfirmDialog) {
         AlertDialog(
@@ -788,28 +856,54 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsSectionHeader(
+private fun CollapsibleSettingsSection(
     title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    expanded: Boolean,
+    onExpandedChange: () -> Unit,
+    content: @Composable () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onExpandedChange),
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                    contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        AnimatedVisibility(visible = expanded) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                content()
+            }
+        }
     }
 }
