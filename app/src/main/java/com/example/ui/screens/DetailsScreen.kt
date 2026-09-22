@@ -11,15 +11,16 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ElectricMeter
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.HealthAndSafety
@@ -64,13 +65,18 @@ private fun DetailsSection(
     content: @Composable () -> Unit
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth().animateContentSize(animationSpec = spring()),
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(animationSpec = spring()),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column {
             Row(
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle)
+                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
@@ -84,12 +90,24 @@ private fun DetailsSection(
                         modifier = Modifier.padding(8.dp)
                     )
                 }
+
                 Column(
-                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 12.dp)
                 ) {
-                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = summary,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
+
                 Icon(
                     imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
                     contentDescription = if (expanded) "Collapse $title" else "Expand $title",
@@ -134,7 +152,9 @@ fun DetailsScreen(
     }
 
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .testTag("details_screen"),
         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -146,23 +166,63 @@ fun DetailsScreen(
             expanded = stateExpanded,
             onToggle = { stateExpanded = !stateExpanded }
         ) {
-            TelemetryMetricCard("Battery Percentage", "${telemetry.percentage}%", Icons.Default.BatteryChargingFull, "State of charge (SoC)")
-            TelemetryMetricCard("Battery Status", status, Icons.Default.Power, "System battery state reported by OS")
+            TelemetryMetricCard(
+                label = "Battery Percentage",
+                value = "${telemetry.percentage}%",
+                leadingIcon = Icons.Default.BatteryChargingFull,
+                subtext = "State of charge (SoC)"
+            )
+            TelemetryMetricCard(
+                label = "Battery Status",
+                value = status,
+                leadingIcon = Icons.Default.Power,
+                subtext = "System battery state reported by OS"
+            )
 
             if (telemetry.plugType != PlugType.UNPLUGGED) {
-                TelemetryMetricCard("Charge Power Source", telemetry.plugType.name.lowercase().replaceFirstChar { it.uppercase() }, Icons.Default.Bolt, "Active connection type")
+                TelemetryMetricCard(
+                    label = "Charge Power Source",
+                    value = telemetry.plugType.name.lowercase().replaceFirstChar { it.uppercase() },
+                    leadingIcon = Icons.Default.Bolt,
+                    subtext = "Active connection type"
+                )
             }
+
             telemetry.currentNowMa?.let {
-                TelemetryMetricCard("Instantaneous Current", "${it} mA", Icons.Default.Bolt, "Live current flow from battery sensor")
+                TelemetryMetricCard(
+                    label = "Instantaneous Current",
+                    value = "${it} mA",
+                    leadingIcon = Icons.Default.Bolt,
+                    subtext = "Live current flow from battery sensor"
+                )
             }
+
             telemetry.currentAverageMa?.let {
-                TelemetryMetricCard("Average Current", "${it} mA", Icons.Default.Speed, "Rolling average current over recent window")
+                TelemetryMetricCard(
+                    label = "Average Current",
+                    value = "${it} mA",
+                    leadingIcon = Icons.Default.Speed,
+                    subtext = "Rolling average current over recent window"
+                )
             }
+
             telemetry.voltageMv?.let {
-                TelemetryMetricCard("Terminal Voltage", "${it} mV (${String.format(Locale.US, "%.3f V", it / 1000f)})", Icons.Default.ElectricMeter, "Voltage across battery terminals")
+                TelemetryMetricCard(
+                    label = "Terminal Voltage",
+                    value = "${it} mV (${String.format(Locale.US, "%.3f V", it / 1000f)})",
+                    leadingIcon = Icons.Default.ElectricMeter,
+                    subtext = "Voltage across battery terminals"
+                )
             }
+
             telemetry.powerWatts?.let {
-                TelemetryMetricCard("Power Draw", String.format(Locale.US, "%.3f W", it), Icons.Default.FlashOn, "Calculated from voltage and current", isCalculated = true)
+                TelemetryMetricCard(
+                    label = "Power Draw",
+                    value = String.format(Locale.US, "%.3f W", it),
+                    leadingIcon = Icons.Default.FlashOn,
+                    subtext = "Calculated from voltage and current",
+                    isCalculated = true
+                )
             }
         }
 
@@ -173,24 +233,68 @@ fun DetailsScreen(
             expanded = hardwareExpanded,
             onToggle = { hardwareExpanded = !hardwareExpanded }
         ) {
-            TelemetryMetricCard("Hardware Manufacturer", Build.MANUFACTURER.replaceFirstChar { it.uppercase() }, Icons.Outlined.Smartphone, "Device manufacturer")
-            TelemetryMetricCard("Device Model", "${Build.MODEL} (${Build.DEVICE})", Icons.Default.Memory, "Hardware codename and model")
+            TelemetryMetricCard(
+                label = "Hardware Manufacturer",
+                value = Build.MANUFACTURER.replaceFirstChar { it.uppercase() },
+                leadingIcon = Icons.Outlined.Smartphone,
+                subtext = "Device manufacturer"
+            )
+            TelemetryMetricCard(
+                label = "Device Model",
+                value = "${Build.MODEL} (${Build.DEVICE})",
+                leadingIcon = Icons.Default.Memory,
+                subtext = "Hardware codename and model"
+            )
 
             if (telemetry.technology.isNotBlank() && telemetry.technology != "Unknown") {
-                TelemetryMetricCard("Battery Chemistry", telemetry.technology, Icons.Default.Memory, "Reported cell technology")
+                TelemetryMetricCard(
+                    label = "Battery Chemistry",
+                    value = telemetry.technology,
+                    leadingIcon = Icons.Default.Memory,
+                    subtext = "Reported cell technology"
+                )
             }
-            TelemetryMetricCard("Hardware Health Report", telemetry.health.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }, Icons.Default.HealthAndSafety, "Hardware self-diagnostics condition")
 
-            telemetry.chargeCounterMah?.let {
-                TelemetryMetricCard("Remaining Charge Counter", "${telemetry.chargeCounterMah} mAh (${telemetry.chargeCounterUah} μAh)", Icons.Default.ElectricMeter, "Hardware battery fuel-gauge counter")
-            }
-            TelemetryMetricCard("Configured Design Capacity", "${settings.configuredCapacityMah} mAh", Icons.Default.ElectricMeter, "User-configured benchmark capacity", isCalculated = true)
+            TelemetryMetricCard(
+                label = "Hardware Health Report",
+                value = telemetry.health.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() },
+                leadingIcon = Icons.Default.HealthAndSafety,
+                subtext = "Hardware self-diagnostics condition"
+            )
 
-            telemetry.energyCounterMwh?.let {
-                TelemetryMetricCard("Remaining Energy", "${it} mWh", Icons.Default.Timeline, "Hardware remaining energy counter")
+            if (telemetry.chargeCounterMah != null) {
+                TelemetryMetricCard(
+                    label = "Remaining Charge Counter",
+                    value = "${telemetry.chargeCounterMah} mAh (${telemetry.chargeCounterUah} μAh)",
+                    leadingIcon = Icons.Default.ElectricMeter,
+                    subtext = "Hardware battery fuel-gauge counter"
+                )
             }
-            telemetry.cycleCount?.let {
-                TelemetryMetricCard("Battery Charge Cycle Count", "${it} cycles", Icons.Default.Refresh, "Total full charge-discharge cycles")
+
+            TelemetryMetricCard(
+                label = "Configured Design Capacity",
+                value = "${settings.configuredCapacityMah} mAh",
+                leadingIcon = Icons.Default.ElectricMeter,
+                subtext = "User-configured benchmark capacity",
+                isCalculated = true
+            )
+
+            if (telemetry.energyCounterMwh != null) {
+                TelemetryMetricCard(
+                    label = "Remaining Energy",
+                    value = "${telemetry.energyCounterMwh} mWh",
+                    leadingIcon = Icons.Default.Timeline,
+                    subtext = "Hardware remaining energy counter"
+                )
+            }
+
+            if (telemetry.cycleCount != null) {
+                TelemetryMetricCard(
+                    label = "Battery Charge Cycle Count",
+                    value = "${telemetry.cycleCount} cycles",
+                    leadingIcon = Icons.Default.Refresh,
+                    subtext = "Total full charge-discharge cycles"
+                )
             }
         }
 
@@ -202,10 +306,21 @@ fun DetailsScreen(
             onToggle = { thermalExpanded = !thermalExpanded }
         ) {
             telemetry.temperatureC?.let {
-                TelemetryMetricCard("Battery Temperature", viewModel.formatTemperature(it), Icons.Default.Thermostat, "Internal thermistor sensor telemetry")
+                TelemetryMetricCard(
+                    label = "Battery Temperature",
+                    value = viewModel.formatTemperature(it),
+                    leadingIcon = Icons.Default.Thermostat,
+                    subtext = "Internal thermistor sensor telemetry"
+                )
             }
+
             telemetry.thermalStatus?.let {
-                TelemetryMetricCard("Thermal Throttling State", it, Icons.Default.Thermostat, "Operating system thermal status")
+                TelemetryMetricCard(
+                    label = "Thermal Throttling State",
+                    value = it,
+                    leadingIcon = Icons.Default.Thermostat,
+                    subtext = "Operating system thermal status"
+                )
             }
         }
     }
