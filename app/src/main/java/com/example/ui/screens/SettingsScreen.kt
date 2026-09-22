@@ -710,7 +710,9 @@ fun SettingsScreen(
                                     painter = painterResource(id = R.drawable.ic_launcher_foreground),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.padding(24.dp)
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(4.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(16.dp))
@@ -793,8 +795,10 @@ fun SettingsScreen(
                                         )
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(14.dp))
-                                Column(modifier = Modifier.weight(1f)) {
+                                Spacer(modifier = Modifier.weight(1f))
+                                Column(
+                                    horizontalAlignment = Alignment.End
+                                ) {
                                     Text(
                                         githubProfile?.name ?: "JBuilds",
                                         style = MaterialTheme.typography.titleMedium,
