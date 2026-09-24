@@ -7,19 +7,19 @@
 
     <!-- Minimal battery terminal -->
     <path
-        android:pathData="M46,26 h16 v5 h-16 z"
+        android:pathData="M47,29.36 h14.08 v4.4 h-14.08 z"
         android:fillColor="#00E5FF" />
 
     <!-- Clean battery outline -->
     <path
-        android:pathData="M35,31 h38 c3.9,0 7,3.1 7,7 v38 c0,3.9 -3.1,7 -7,7 h-38 c-3.9,0 -7,-3.1 -7,-7 v-38 c0,-3.9 3.1,-7 7,-7 z"
+        android:pathData="M37.28,33.76 h33.44 c3.43,0 6.16,2.73 6.16,6.16 v33.44 c0,3.43 -2.73,6.16 -6.16,6.16 h-33.44 c-3.43,0 -6.16,-2.73 -6.16,-6.16 v-33.44 c0,-3.43 2.73,-6.16 6.16,-6.16 z"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="3.25"
+        android:strokeWidth="2.86"
         android:strokeLineJoin="round"
         android:fillColor="#00000000" />
 
     <!-- Simple charging bolt -->
     <path
-        android:pathData="M57,38 L44,55 h9 l-5,17 16,-21 h-9 z"
+        android:pathData="M56.64,39.92 L45.2,54.88 h7.92 l-4.4,14.96 14.08,-18.48 h-7.92 z"
         android:fillColor="#00E5FF" />
 </vector>
