@@ -1,7 +1,6 @@
 package com.example.data.telemetry
 
 import com.example.data.local.entity.BatterySnapshotEntity
-import com.example.model.BatteryStatus
 import com.example.model.BatteryTelemetry
 import kotlin.math.abs
 
@@ -14,12 +13,13 @@ object BatteryCalculator {
     fun calculatePowerWatts(voltageMv: Int?, currentMa: Int?): Double? {
         if (voltageMv == null || currentMa == null || voltageMv <= 0) return null
         val power = (voltageMv.toDouble() / 1000.0) * (abs(currentMa).toDouble() / 1000.0)
-        return if (power > 0.0 && power < 200.0) power else null // Cap at realistic 200W for phones
+        return if (power > 0.0 && power < 200.0) power else null
     }
 
     /**
-     * Calculates drain or charge rate (% per hour) from a list of recent snapshots.
-     * Positive means charging (+%/hr), negative means discharging (-%/hr).
+     * Calculates the simple battery rate from snapshots.
+     * This is useful for telemetry display, but should not be used by itself
+     * as a real-world runtime estimate because idle and active usage differ.
      */
     fun calculateRatePerHourFromSnapshots(snapshots: List<BatterySnapshotEntity>): Double? {
         if (snapshots.size < 2) return null
@@ -27,29 +27,77 @@ object BatteryCalculator {
         val oldest = snapshots.last()
 
         val timeDiffMs = newest.timestamp - oldest.timestamp
-        if (timeDiffMs < 60_000L) return null // Need at least 1 minute of data for meaningful rate
+        if (timeDiffMs < 60_000L) return null
 
         val hours = timeDiffMs.toDouble() / 3_600_000.0
         if (hours <= 0.0) return null
 
         val percentDiff = newest.percentage - oldest.percentage
         val rate = percentDiff / hours
-
-        // Clamp to sensible range (-100%/hr to +150%/hr)
         return if (rate >= -100.0 && rate <= 150.0) rate else null
     }
 
     /**
+     * Estimates active-use discharge rate from historical snapshots.
+     *
+     * Only uses periods where the screen was on and the battery was discharging.
+     * This intentionally returns null when there is not enough representative
+     * history instead of falling back to an instantaneous current reading.
+     */
+    fun calculateActiveDischargeRatePerHour(
+        snapshots: List<BatterySnapshotEntity>,
+        minimumMinutes: Long = 15L
+    ): Double? {
+        if (snapshots.size < 3) return null
+
+        val ordered = snapshots.sortedBy { it.timestamp }
+        val rates = mutableListOf<Pair<Double, Double>>() // rate, interval hours
+
+        ordered.zipWithNext().forEach { (previous, current) ->
+            if (!previous.isScreenOn || !current.isScreenOn) return@forEach
+            if (previous.status != "DISCHARGING" || current.status != "DISCHARGING") return@forEach
+
+            val elapsedMs = current.timestamp - previous.timestamp
+            if (elapsedMs !in 30_000L..3_600_000L) return@forEach
+
+            val percentDrop = previous.percentage - current.percentage
+            if (percentDrop <= 0) return@forEach
+
+            val hours = elapsedMs.toDouble() / 3_600_000.0
+            val rate = percentDrop / hours
+            if (rate in 0.1..30.0) {
+                rates += rate to hours
+            }
+        }
+
+        if (rates.size < 3) return null
+
+        val totalHours = rates.sumOf { it.second }
+        if (totalHours * 60.0 < minimumMinutes) return null
+
+        // Reject extreme intervals caused by transient/OEM battery percentage jumps.
+        val sortedRates = rates.map { it.first }.sorted()
+        val median = sortedRates[sortedRates.size / 2]
+        val stableRates = rates.filter { it.first in (median * 0.5)..(median * 1.5) }
+        if (stableRates.size < 3) return null
+
+        val stableHours = stableRates.sumOf { it.second }
+        if (stableHours * 60.0 < minimumMinutes) return null
+
+        return stableRates.sumOf { it.first * it.second } / stableHours
+    }
+
+    /**
      * Calculates estimated remaining time in seconds.
-     * Discharging: time until 0%.
-     * Charging: time until 100%.
+     * Discharging estimates use representative active-use history only.
+     * Charging prefers Android's official estimate, then historical charge rate.
      */
     fun calculateEstimatedTimeRemaining(
         telemetry: BatteryTelemetry,
         configuredCapacityMah: Int,
-        recentRatePerHour: Double?
+        recentRatePerHour: Double?,
+        activeDischargeRatePerHour: Double? = null
     ): Long? {
-        // If device provides official charging time remaining via computeChargeTimeRemaining
         if (telemetry.isCharging) {
             telemetry.computedChargeTimeRemainingMs?.let { ms ->
                 if (ms > 0) return ms / 1000
@@ -57,19 +105,15 @@ object BatteryCalculator {
         }
 
         val percentage = telemetry.percentage
-        if (percentage <= 0 || percentage >= 100 && telemetry.isCharging) {
-            return null
-        }
+        if (percentage <= 0 || percentage >= 100 && telemetry.isCharging) return null
 
-        // When charging:
         if (telemetry.isCharging) {
             val remainingPercent = 100 - percentage
-            // Try rate per hour first
             if (recentRatePerHour != null && recentRatePerHour > 0.5) {
                 val hours = remainingPercent / recentRatePerHour
                 return (hours * 3600.0).toLong().coerceIn(60, 86400)
             }
-            // Try current mA
+
             val currentMa = telemetry.currentNowMa ?: telemetry.currentAverageMa
             if (currentMa != null && abs(currentMa) > 50) {
                 val capacityNeededMah = configuredCapacityMah * (remainingPercent / 100.0)
@@ -79,30 +123,20 @@ object BatteryCalculator {
             return null
         }
 
-        // When discharging:
-        if (recentRatePerHour != null && recentRatePerHour < -0.2) {
-            val hours = percentage / abs(recentRatePerHour)
-            return (hours * 3600.0).toLong().coerceIn(300, 345600) // 5 min to 4 days
-        }
+        // Do not present an idle/current-draw estimate as the user's expected runtime.
+        val rate = activeDischargeRatePerHour ?: return null
+        if (rate <= 0.2) return null
 
-        // Fallback to instantaneous/average current consumption if available
-        val currentMa = telemetry.currentAverageMa ?: telemetry.currentNowMa
-        if (currentMa != null && abs(currentMa) > 30) {
-            val remainingMah = configuredCapacityMah * (percentage / 100.0)
-            val hours = remainingMah / abs(currentMa).toDouble()
-            return (hours * 3600.0).toLong().coerceIn(300, 345600)
-        }
-
-        return null
+        val hours = percentage / rate
+        return (hours * 3600.0).toLong().coerceIn(300, 345600)
     }
 
     /**
      * Formats remaining time cleanly without misleading precision.
-     * E.g. "3h 45m" or "< 10m" or "1d 4h"
      */
     fun formatEstimatedDuration(seconds: Long?): String {
         if (seconds == null || seconds <= 0) return "Calculating..."
-        val minutes = (seconds / 60)
+        val minutes = seconds / 60
         val hours = minutes / 60
         val days = hours / 24
 
@@ -123,23 +157,19 @@ object BatteryCalculator {
     /**
      * Normalizes current readings across different OEM implementations.
      * Standard BatteryManager returns microamperes (uA). Some OEMs return mA.
-     * Also normalizes sign: positive = charging into battery, negative = discharging out.
+     * Positive = charging, negative = discharging.
      */
     fun normalizeCurrentToMa(rawPropertyVal: Int, isCharging: Boolean): Int? {
         if (rawPropertyVal == Int.MIN_VALUE || rawPropertyVal == 0) return null
-        
+
         var ma = if (abs(rawPropertyVal) > 10_000) {
-            rawPropertyVal / 1000 // Was microamperes
+            rawPropertyVal / 1000
         } else {
-            rawPropertyVal // Was already mA
+            rawPropertyVal
         }
 
-        // Ensure reasonable limits (-15000mA to 15000mA for fast charging / heavy gaming)
         if (abs(ma) > 20_000) return null
 
-        // OEM sign alignment:
-        // Some OEMs return negative current during charging, or positive during discharging.
-        // We ensure standard convention: Discharging is negative, Charging is positive.
         if (isCharging && ma < 0) {
             ma = -ma
         } else if (!isCharging && ma > 0) {
