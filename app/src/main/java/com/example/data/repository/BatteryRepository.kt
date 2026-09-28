@@ -40,14 +40,12 @@ class BatteryRepository(private val context: Context) {
     private var lastSnapshotPercentage: Int = -1
 
     init {
-        // Collect telemetry flow and update state
         scope.launch {
             collector.telemetryFlow().collect { rawTelemetry ->
                 processTelemetry(rawTelemetry)
             }
         }
 
-        // Clean up old data on startup based on retention settings
         scope.launch {
             pruneAccordingToRetention()
         }
@@ -55,16 +53,19 @@ class BatteryRepository(private val context: Context) {
 
     private suspend fun processTelemetry(raw: BatteryTelemetry) {
         val settings = preferences.settings.value
-
-        // Query recent snapshots to calculate rate per hour
-        val recentSnapshots = snapshotDao.getRecentSnapshotsList(20)
+        val recentSnapshots = snapshotDao.getRecentSnapshotsList(120)
         val ratePerHour = BatteryCalculator.calculateRatePerHourFromSnapshots(recentSnapshots)
+        val activeRatePerHour = if (settings.enhancedRuntimeEstimation) {
+            BatteryCalculator.calculateActiveDischargeRatePerHour(recentSnapshots)
+        } else {
+            null
+        }
 
-        // Calculate estimated time remaining
         val timeRemaining = BatteryCalculator.calculateEstimatedTimeRemaining(
             telemetry = raw,
             configuredCapacityMah = settings.configuredCapacityMah,
-            recentRatePerHour = ratePerHour
+            recentRatePerHour = ratePerHour,
+            activeDischargeRatePerHour = activeRatePerHour
         )
 
         val enriched = raw.copy(
@@ -73,12 +74,8 @@ class BatteryRepository(private val context: Context) {
         )
 
         _currentTelemetry.value = enriched
-
-        // Trigger threshold notifications if configured
         alertManager.checkAndNotify(enriched, settings)
 
-        // Determine if we should record a snapshot:
-        // Record if percentage changed, or if 60 seconds passed since last snapshot
         val now = System.currentTimeMillis()
         val percentChanged = lastSnapshotPercentage != enriched.percentage
         val intervalPassed = (now - lastSnapshotTimeMs) >= 60_000L
@@ -89,7 +86,6 @@ class BatteryRepository(private val context: Context) {
             lastSnapshotPercentage = enriched.percentage
         }
 
-        // Handle charging session tracking
         handleChargingSessionTracking(enriched)
     }
 
@@ -118,7 +114,6 @@ class BatteryRepository(private val context: Context) {
             val temp = telemetry.temperatureC ?: 0f
 
             if (activeSession == null) {
-                // Start new charging session
                 val newSession = ChargingSessionEntity(
                     startTime = System.currentTimeMillis(),
                     startPercentage = telemetry.percentage,
@@ -133,7 +128,6 @@ class BatteryRepository(private val context: Context) {
                 )
                 sessionDao.insert(newSession)
             } else {
-                // Update ongoing session
                 val updatedPeakCurrent = max(activeSession.peakCurrentMa, currentMa)
                 val updatedAvgCurrent = if (activeSession.avgCurrentMa > 0 && currentMa > 0) {
                     (activeSession.avgCurrentMa + currentMa) / 2
@@ -150,36 +144,33 @@ class BatteryRepository(private val context: Context) {
 
                 val updatedMaxTemp = max(activeSession.maxTemperatureC, temp)
 
-                val updated = activeSession.copy(
-                    endPercentage = telemetry.percentage,
-                    peakCurrentMa = updatedPeakCurrent,
-                    avgCurrentMa = updatedAvgCurrent,
-                    peakWattage = updatedPeakWattage,
-                    avgWattage = updatedAvgWattage,
-                    maxTemperatureC = updatedMaxTemp
+                sessionDao.update(
+                    activeSession.copy(
+                        endPercentage = telemetry.percentage,
+                        peakCurrentMa = updatedPeakCurrent,
+                        avgCurrentMa = updatedAvgCurrent,
+                        peakWattage = updatedPeakWattage,
+                        avgWattage = updatedAvgWattage,
+                        maxTemperatureC = updatedMaxTemp
+                    )
                 )
-                sessionDao.update(updated)
             }
-        } else {
-            // Discharging: close any active session
-            if (activeSession != null) {
-                val completed = activeSession.copy(
+        } else if (activeSession != null) {
+            sessionDao.update(
+                activeSession.copy(
                     endTime = System.currentTimeMillis(),
                     endPercentage = telemetry.percentage,
                     isCompleted = true
                 )
-                sessionDao.update(completed)
-            }
+            )
         }
     }
 
-    fun getSnapshotsSince(sinceTimestamp: Long): Flow<List<BatterySnapshotEntity>> {
-        return snapshotDao.getSnapshotsSince(sinceTimestamp)
-    }
+    fun getSnapshotsSince(sinceTimestamp: Long): Flow<List<BatterySnapshotEntity>> =
+        snapshotDao.getSnapshotsSince(sinceTimestamp)
 
-    fun getAllChargingSessions(): Flow<List<ChargingSessionEntity>> {
-        return sessionDao.getAllSessions()
-    }
+    fun getAllChargingSessions(): Flow<List<ChargingSessionEntity>> =
+        sessionDao.getAllSessions()
 
     suspend fun pruneAccordingToRetention() {
         val days = preferences.settings.value.dataRetentionDays
@@ -208,6 +199,7 @@ class BatteryRepository(private val context: Context) {
             put("configuredCapacityMah", currentSettings.configuredCapacityMah)
             put("dataRetentionDays", currentSettings.dataRetentionDays)
             put("samplingIntervalSeconds", currentSettings.samplingIntervalSeconds)
+            put("enhancedRuntimeEstimation", currentSettings.enhancedRuntimeEstimation)
             put("lowBatteryAlertEnabled", currentSettings.lowBatteryAlertEnabled)
             put("lowBatteryThreshold", currentSettings.lowBatteryThreshold)
             put("fullChargeAlertEnabled", currentSettings.fullChargeAlertEnabled)
@@ -284,10 +276,7 @@ class BatteryRepository(private val context: Context) {
 
             val temperatureUnit = runCatching {
                 com.example.model.TemperatureUnit.valueOf(
-                    settingsJson.optString(
-                        "temperatureUnit",
-                        com.example.model.TemperatureUnit.CELSIUS.name
-                    )
+                    settingsJson.optString("temperatureUnit", com.example.model.TemperatureUnit.CELSIUS.name)
                 )
             }.getOrDefault(com.example.model.TemperatureUnit.CELSIUS)
 
@@ -299,6 +288,7 @@ class BatteryRepository(private val context: Context) {
                 configuredCapacityMah = settingsJson.optInt("configuredCapacityMah", 4500),
                 dataRetentionDays = settingsJson.optInt("dataRetentionDays", 7),
                 samplingIntervalSeconds = settingsJson.optInt("samplingIntervalSeconds", 30),
+                enhancedRuntimeEstimation = settingsJson.optBoolean("enhancedRuntimeEstimation", false),
                 lowBatteryAlertEnabled = settingsJson.optBoolean("lowBatteryAlertEnabled", false),
                 lowBatteryThreshold = settingsJson.optInt("lowBatteryThreshold", 20),
                 fullChargeAlertEnabled = settingsJson.optBoolean("fullChargeAlertEnabled", false),
@@ -353,12 +343,8 @@ class BatteryRepository(private val context: Context) {
             database.withTransaction {
                 snapshotDao.deleteAll()
                 sessionDao.deleteAll()
-                if (restoredSnapshots.isNotEmpty()) {
-                    snapshotDao.insertAll(restoredSnapshots)
-                }
-                if (restoredSessions.isNotEmpty()) {
-                    sessionDao.insertAll(restoredSessions)
-                }
+                if (restoredSnapshots.isNotEmpty()) snapshotDao.insertAll(restoredSnapshots)
+                if (restoredSessions.isNotEmpty()) sessionDao.insertAll(restoredSessions)
             }
 
             preferences.updateSettings(restoredSettings)
@@ -367,5 +353,4 @@ class BatteryRepository(private val context: Context) {
             false
         }
     }
-
 }
