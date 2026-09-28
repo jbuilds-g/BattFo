@@ -17,8 +17,9 @@ data class UserSettings(
     val amoledMode: Boolean = false,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
     val configuredCapacityMah: Int = 4500,
-    val dataRetentionDays: Int = 7, // 1, 7, 30, -1 for unlimited
+    val dataRetentionDays: Int = 7,
     val samplingIntervalSeconds: Int = 30,
+    val enhancedRuntimeEstimation: Boolean = false,
     val lowBatteryAlertEnabled: Boolean = false,
     val lowBatteryThreshold: Int = 20,
     val fullChargeAlertEnabled: Boolean = false,
