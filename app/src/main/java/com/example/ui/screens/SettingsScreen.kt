@@ -347,6 +347,31 @@ fun SettingsScreen(
                     }
                 }
 
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Enhanced Runtime Estimation",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Uses recent screen-on discharge history instead of idle drain to estimate remaining battery life.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = settings.enhancedRuntimeEstimation,
+                        onCheckedChange = {
+                            viewModel.updateSettings(settings.copy(enhancedRuntimeEstimation = it))
+                        }
+                    )
+                }
+
                 Column {
                     Text(
                         text = "Benchmark Design Capacity: ${settings.configuredCapacityMah} mAh",
