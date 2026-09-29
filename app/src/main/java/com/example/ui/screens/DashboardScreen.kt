@@ -210,30 +210,40 @@ fun DashboardScreen(
                         }
                     }
 
-                    if (timeRemaining != null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Timer,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Column {
+                            Text(
+                                text = when {
+                                    telemetry.isCharging && timeRemaining != null -> "Full in $timeRemaining"
+                                    telemetry.isCharging -> "Calculating charge time..."
+                                    timeRemaining != null -> "$timeRemaining until empty"
+                                    settings.enhancedRuntimeEstimation -> "Calculating time until empty..."
+                                    else -> "Enable Enhanced Runtime Estimation"
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
                             )
-                            Column {
+                            if (!telemetry.isCharging) {
                                 Text(
-                                    text = if (telemetry.isCharging) "Full in $timeRemaining" else "$timeRemaining remaining",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
+                                    text = if (timeRemaining != null) {
+                                        "Based on recent screen-on usage"
+                                    } else if (settings.enhancedRuntimeEstimation) {
+                                        "Collecting recent usage data"
+                                    } else {
+                                        "Uses recent screen-on usage history"
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                if (!telemetry.isCharging && settings.enhancedRuntimeEstimation) {
-                                    Text(
-                                        text = "Based on recent screen-on usage",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
                             }
                         }
                     }
