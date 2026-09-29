@@ -51,40 +51,28 @@ object BatteryCalculator {
         if (snapshots.size < 3) return null
 
         val ordered = snapshots.sortedBy { it.timestamp }
-        val rates = mutableListOf<Pair<Double, Double>>() // rate, interval hours
-
-        ordered.zipWithNext().forEach { (previous, current) ->
-            if (!previous.isScreenOn || !current.isScreenOn) return@forEach
-            if (previous.status != "DISCHARGING" || current.status != "DISCHARGING") return@forEach
-
-            val elapsedMs = current.timestamp - previous.timestamp
-            if (elapsedMs !in 30_000L..3_600_000L) return@forEach
-
-            val percentDrop = previous.percentage - current.percentage
-            if (percentDrop <= 0) return@forEach
-
-            val hours = elapsedMs.toDouble() / 3_600_000.0
-            val rate = percentDrop / hours
-            if (rate in 0.1..30.0) {
-                rates += rate to hours
-            }
+        val candidates = ordered.filter {
+            it.isScreenOn && it.status == "DISCHARGING"
         }
 
-        if (rates.size < 3) return null
+        if (candidates.size < 3) return null
 
-        val totalHours = rates.sumOf { it.second }
-        if (totalHours * 60.0 < minimumMinutes) return null
+        // Use the full recent active-use window instead of requiring every
+        // individual sample to show a percentage drop. Battery percentage is
+        // coarse and can remain unchanged for many samples.
+        val oldest = candidates.first()
+        val newest = candidates.last()
+        val elapsedMs = newest.timestamp - oldest.timestamp
+        if (elapsedMs < minimumMinutes * 60_000L) return null
 
-        // Reject extreme intervals caused by transient/OEM battery percentage jumps.
-        val sortedRates = rates.map { it.first }.sorted()
-        val median = sortedRates[sortedRates.size / 2]
-        val stableRates = rates.filter { it.first in (median * 0.5)..(median * 1.5) }
-        if (stableRates.size < 3) return null
+        val percentDrop = oldest.percentage - newest.percentage
+        if (percentDrop <= 0) return null
 
-        val stableHours = stableRates.sumOf { it.second }
-        if (stableHours * 60.0 < minimumMinutes) return null
+        val hours = elapsedMs.toDouble() / 3_600_000.0
+        if (hours <= 0.0) return null
 
-        return stableRates.sumOf { it.first * it.second } / stableHours
+        val rate = percentDrop / hours
+        return rate.takeIf { it in 0.1..30.0 }
     }
 
     /**
