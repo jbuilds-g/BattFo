@@ -30,6 +30,7 @@ class SettingsPreferences(context: Context) {
             configuredCapacityMah = prefs.getInt("configured_capacity_mah", 4500),
             dataRetentionDays = prefs.getInt("retention_days", 7),
             samplingIntervalSeconds = prefs.getInt("sampling_interval_sec", 30),
+            enhancedRuntimeEstimation = prefs.getBoolean("enhanced_runtime_estimation", false),
             lowBatteryAlertEnabled = prefs.getBoolean("low_battery_alert", false),
             lowBatteryThreshold = prefs.getInt("low_battery_thresh", 20),
             fullChargeAlertEnabled = prefs.getBoolean("full_charge_alert", false),
@@ -54,6 +55,7 @@ class SettingsPreferences(context: Context) {
             .putInt("configured_capacity_mah", newSettings.configuredCapacityMah)
             .putInt("retention_days", newSettings.dataRetentionDays)
             .putInt("sampling_interval_sec", newSettings.samplingIntervalSeconds)
+            .putBoolean("enhanced_runtime_estimation", newSettings.enhancedRuntimeEstimation)
             .putBoolean("low_battery_alert", newSettings.lowBatteryAlertEnabled)
             .putInt("low_battery_thresh", newSettings.lowBatteryThreshold)
             .putBoolean("full_charge_alert", newSettings.fullChargeAlertEnabled)
