@@ -221,11 +221,20 @@ fun DashboardScreen(
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
-                            Text(
-                                text = if (telemetry.isCharging) "Full in $timeRemaining" else "$timeRemaining remaining",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
-                            )
+                            Column {
+                                Text(
+                                    text = if (telemetry.isCharging) "Full in $timeRemaining" else "$timeRemaining remaining",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                if (!telemetry.isCharging && settings.enhancedRuntimeEstimation) {
+                                    Text(
+                                        text = "Based on recent screen-on usage",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
                     }
                 }
