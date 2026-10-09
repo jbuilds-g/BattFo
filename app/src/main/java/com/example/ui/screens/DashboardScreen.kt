@@ -237,7 +237,7 @@ fun DashboardScreen(
                                     text = if (timeRemaining != null) {
                                         "Based on recent screen-on usage"
                                     } else if (settings.enhancedRuntimeEstimation) {
-                                        "Use your phone unplugged for 15+ minutes to build an estimate"
+                                        "Charging history is separate. Keep the screen on while unplugged for 15+ minutes"
                                     } else {
                                         "Uses recent screen-on usage history"
                                     },
