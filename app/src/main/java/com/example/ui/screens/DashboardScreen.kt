@@ -226,7 +226,7 @@ fun DashboardScreen(
                                     telemetry.isCharging && timeRemaining != null -> "Full in $timeRemaining"
                                     telemetry.isCharging -> "Calculating charge time..."
                                     timeRemaining != null -> "$timeRemaining until empty"
-                                    settings.enhancedRuntimeEstimation -> "Calculating time until empty..."
+                                    settings.enhancedRuntimeEstimation -> "Not enough active-use history yet"
                                     else -> "Enable Enhanced Runtime Estimation"
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
@@ -237,7 +237,7 @@ fun DashboardScreen(
                                     text = if (timeRemaining != null) {
                                         "Based on recent screen-on usage"
                                     } else if (settings.enhancedRuntimeEstimation) {
-                                        "Collecting recent usage data"
+                                        "Use your phone unplugged for 15+ minutes to build an estimate"
                                     } else {
                                         "Uses recent screen-on usage history"
                                     },
