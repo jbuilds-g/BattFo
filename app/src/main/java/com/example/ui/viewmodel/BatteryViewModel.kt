@@ -1,11 +1,11 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import com.example.BattFoApplication
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.entity.BatterySnapshotEntity
 import com.example.data.local.entity.ChargingSessionEntity
-import com.example.data.repository.BatteryRepository
 import com.example.model.BatteryTelemetry
 import com.example.model.TemperatureUnit
 import com.example.model.UserSettings
@@ -34,7 +34,7 @@ enum class HistoryMetric(val label: String) {
 }
 
 class BatteryViewModel(application: Application) : AndroidViewModel(application) {
-    val repository = BatteryRepository(application)
+    val repository = (application as BattFoApplication).batteryRepository
 
     val currentTelemetry: StateFlow<BatteryTelemetry> = repository.currentTelemetry
 
